@@ -1,0 +1,2 @@
+import type { AnchorHTMLAttributes, ReactNode } from "react";
+export function IconButton({ children, label, className="", ...props }: AnchorHTMLAttributes<HTMLAnchorElement> & { children: ReactNode; label: string }) { return <a aria-label={label} className={`inline-flex size-11 items-center justify-center rounded-full bg-white text-ink shadow-[0_3px_0_rgba(66,97,120,0.1)] transition hover:-translate-y-0.5 hover:bg-sky focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-ink ${className}`} {...props}>{children}</a>; }

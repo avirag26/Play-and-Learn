@@ -1,0 +1,2 @@
+import type { ReactNode } from "react";
+export function SectionHeading({ eyebrow, children, action }: { eyebrow?: string; children: ReactNode; action?: ReactNode }) { return <div className="mb-6 flex items-end justify-between gap-4"><div>{eyebrow ? <p className="mb-2 text-xs font-black uppercase tracking-[0.2em] text-muted-ink">{eyebrow}</p> : null}<h2 className="text-2xl font-black tracking-tight text-ink sm:text-3xl">{children}</h2></div>{action}</div>; }

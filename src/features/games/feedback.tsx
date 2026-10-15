@@ -1,0 +1,1 @@
+export function Feedback({ tone, children }: { tone: "success" | "try" | "info"; children: React.ReactNode }) { const styles = { success: "bg-mint text-ink", try: "bg-coral/50 text-ink", info: "bg-sky text-ink" }; return <div role="status" aria-live="polite" className={`rounded-2xl px-4 py-3 text-center text-sm font-black ${styles[tone]}`}>{children}</div>; }

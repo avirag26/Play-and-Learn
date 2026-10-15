@@ -1,0 +1,4 @@
+import type { ButtonHTMLAttributes, ReactNode } from "react";
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode; variant?: "primary" | "secondary" | "ghost" };
+const variants = { primary:"border-2 border-ink bg-[#ffd16a] text-ink shadow-[0_5px_0_#d99052] hover:-translate-y-0.5 active:translate-y-0", secondary:"border-2 border-ink bg-cream text-ink shadow-[0_4px_0_#d99052] hover:-translate-y-0.5", ghost:"text-ink hover:bg-white/70" };
+export function Button({ children, className="", variant="primary", ...props }: ButtonProps) { return <button className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-base font-extrabold transition-all focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-ink ${variants[variant]} ${className}`} {...props}>{children}</button>; }
