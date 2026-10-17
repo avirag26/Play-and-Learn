@@ -1,3 +1,4 @@
+import { markPlayed } from "@/lib/activity";
 import { alphabet } from "@/lib/alphabet-data";
 
 export const ALPHABET_PROGRESS_KEY = "play-learn-alphabet-v1";
@@ -31,6 +32,6 @@ export function readAlphabetProgress(): AlphabetProgress {
 }
 
 export function saveAlphabetProgress(progress: AlphabetProgress): void {
-  try { window.localStorage.setItem(ALPHABET_PROGRESS_KEY, JSON.stringify(progress)); }
+  try { window.localStorage.setItem(ALPHABET_PROGRESS_KEY, JSON.stringify(progress)); markPlayed("alphabet-adventure"); }
   catch { /* Storage may be unavailable; the current session still works. */ }
 }

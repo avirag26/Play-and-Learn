@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Phones tall enough to stack a big picture above its controls. */
+@custom-variant tall-phone (@media (max-width:767px) and (min-height:740px) and (max-aspect-ratio:1/2));
 
 :root { --sky:#e5f4ff; --sunshine:#ffd968; --mint:#bcefd4; --coral:#ffb6a8; --lavender:#d9cbff; --cream:#fff9ec; --ink:#30465d; --muted-ink:#6c7e8e; --world-blue:#76aae0; --world-deep:#4f8bd0; --background:var(--world-blue); --foreground:var(--ink); }
 [data-theme="soft"] { --cream:#f7fbff; --sky:#eef8ff; }
