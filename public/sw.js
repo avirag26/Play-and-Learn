@@ -1,4 +1,4 @@
-const VERSION = "v6";
+const VERSION = "v7";
 const SHELL_CACHE = `play-learn-shell-${VERSION}`;
 const STATIC_CACHE = `play-learn-static-${VERSION}`;
 const RUNTIME_CACHE = `play-learn-runtime-${VERSION}`;
@@ -40,12 +40,14 @@ async function navigationFirst(request) {
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
-  if (request.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+  // Audio and video load in pieces (Range requests answered with 206 Partial Content). The Cache API
+  // cannot store partial responses, and Safari needs real 206 responses, so media goes straight to the network.
+  if (request.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/") || url.pathname.startsWith("/sounds/") || request.headers.has("range")) return;
   if (request.mode === "navigate") {
     event.respondWith(navigationFirst(request));
     return;
   }
-  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/sounds/") || url.pathname.startsWith("/icon-") || url.pathname === "/apple-touch-icon.svg" || url.pathname === "/manifest.webmanifest") {
+  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icon-") || url.pathname === "/apple-touch-icon.svg" || url.pathname === "/manifest.webmanifest") {
     event.respondWith(cacheFirst(request));
   }
 });
