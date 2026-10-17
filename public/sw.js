@@ -1,4 +1,4 @@
-const VERSION = "v5";
+const VERSION = "v6";
 const SHELL_CACHE = `play-learn-shell-${VERSION}`;
 const STATIC_CACHE = `play-learn-static-${VERSION}`;
 const RUNTIME_CACHE = `play-learn-runtime-${VERSION}`;
