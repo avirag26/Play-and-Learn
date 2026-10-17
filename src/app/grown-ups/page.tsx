@@ -2,14 +2,16 @@
 
 import type { FormEvent } from "react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { AccountPanel, PARENT_RETURN_KEY, type AccountNotice, type AccountState } from "@/features/parent/account-panel";
 import { GameProgressCard, ProgressOverview } from "@/features/parent/progress-dashboard";
 import { ACTIVITY_STORAGE_KEY, readLastPlayed, type LastPlayed } from "@/lib/activity";
 import { ANIMAL_PROGRESS_KEY, emptyAnimalProgress, readAnimalProgress, type AnimalProgress } from "@/lib/animal-progress";
 import { animalSoundCredits } from "@/lib/animal-sounds";
+import { AuthError, getCurrentUser, getProviders, googleErrorMessage, type AuthProviders, type AuthUser } from "@/lib/auth-client";
 import { COLOR_PROGRESS_KEY, emptyColorProgress, readColorProgress, type ColorProgress } from "@/lib/color-progress";
 import { ALPHABET_PROGRESS_KEY, emptyAlphabetProgress, readAlphabetProgress, type AlphabetProgress } from "@/lib/alphabet-progress";
 import { DEFAULT_SETTINGS, MISSIONS_STORAGE_KEY, type AgeRange, type AppSettings, type ReminderInterval, readCompletedMissions, readSettings, saveSettings } from "@/lib/app-settings";
@@ -19,8 +21,20 @@ import { buildParentReport } from "@/lib/parent-report";
 type GateQuestion = { first: number; second: number; answer: number };
 function makeGateQuestion(): GateQuestion { const first = Math.floor(Math.random() * 5) + 3; const second = Math.floor(Math.random() * 4) + 2; return { first, second, answer: first + second }; }
 
-type Tab = "progress" | "settings";
-const tabs: readonly { id: Tab; label: string }[] = [{ id: "progress", label: "Progress" }, { id: "settings", label: "Settings" }];
+type Tab = "progress" | "account" | "settings";
+const tabs: readonly { id: Tab; label: string }[] = [{ id: "progress", label: "Progress" }, { id: "account", label: "Account" }, { id: "settings", label: "Settings" }];
+
+/** Reads and clears the result the API adds to the URL after Google sign-in. */
+function takeGoogleResult(): AccountNotice | null {
+  const url = new URL(window.location.href);
+  const success = url.searchParams.get("auth") === "google";
+  const error = url.searchParams.get("auth_error");
+  if (!success && !error) return null;
+  url.searchParams.delete("auth");
+  url.searchParams.delete("auth_error");
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  return error ? { tone: "error", message: googleErrorMessage(error) } : { tone: "success", message: "You're signed in with Google." };
+}
 
 export default function GrownUpsPage() {
   const [question, setQuestion] = useState<GateQuestion | null>(null);
@@ -36,28 +50,54 @@ export default function GrownUpsPage() {
   const [lastPlayed, setLastPlayed] = useState<LastPlayed>({});
   const [now, setNow] = useState(0);
   const [resetOpen, setResetOpen] = useState(false);
+  const [account, setAccount] = useState<AccountState>({ status: "loading" });
+  const [providers, setProviders] = useState<AuthProviders | null>(null);
+  const [notice, setNotice] = useState<AccountNotice | null>(null);
 
-  useEffect(() => { const timer = window.setTimeout(() => { setQuestion(makeGateQuestion()); setSettings(readSettings()); setCompletedMissions(readCompletedMissions()); setAlphabetProgress(readAlphabetProgress()); setAnimalProgress(readAnimalProgress()); setColorProgress(readColorProgress()); setLastPlayed(readLastPlayed()); setNow(Date.now()); }, 0); return () => window.clearTimeout(timer); }, []);
+  const loadAccount = useCallback(async () => {
+    setAccount({ status: "loading" });
+    try {
+      const [user, available] = await Promise.all([getCurrentUser(), getProviders()]);
+      setProviders(available);
+      setAccount(user ? { status: "signed-in", user } : { status: "signed-out" });
+    } catch (error) {
+      setAccount({ status: "error", message: error instanceof AuthError ? error.message : "Couldn't load your account." });
+    }
+  }, []);
+
+  useEffect(() => { const timer = window.setTimeout(() => { setQuestion(makeGateQuestion()); setSettings(readSettings()); setCompletedMissions(readCompletedMissions()); setAlphabetProgress(readAlphabetProgress()); setAnimalProgress(readAnimalProgress()); setColorProgress(readColorProgress()); setLastPlayed(readLastPlayed()); setNow(Date.now());
+    // Coming back from Google: the adult check was already passed before leaving.
+    let returning = false;
+    try { returning = window.sessionStorage.getItem(PARENT_RETURN_KEY) === "account"; window.sessionStorage.removeItem(PARENT_RETURN_KEY); } catch { /* Ask the adult check again. */ }
+    const googleResult = takeGoogleResult();
+    if (googleResult) { setNotice(googleResult); setTab("account"); }
+    if (returning && googleResult) setUnlocked(true);
+  }, 0); return () => window.clearTimeout(timer); }, []);
+  useEffect(() => { if (!unlocked) return; const timer = window.setTimeout(() => void loadAccount(), 0); return () => window.clearTimeout(timer); }, [unlocked, loadAccount]);
   useEffect(() => { if (!unlocked) return; document.documentElement.dataset.theme = settings.warmTheme ? "warm" : "soft"; document.documentElement.dataset.reducedMotion = settings.reducedMotion ? "true" : "false"; }, [settings, unlocked]);
 
   const report = useMemo(() => buildParentReport({ alphabet: alphabetProgress, animal: animalProgress, color: colorProgress, lastPlayed }), [alphabetProgress, animalProgress, colorProgress, lastPlayed]);
   const missionsDone = homeMissions.filter((mission) => completedMissions.includes(mission.id)).length;
 
   function unlock(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (!question || Number(answer) !== question.answer) { setGateError("That answer needs another try. Ask a grown-up to solve it together."); setAnswer(""); setQuestion(makeGateQuestion()); return; } setUnlocked(true); setGateError(""); }
+  function signedIn(user: AuthUser) { setAccount({ status: "signed-in", user }); setNotice({ tone: "success", message: `Welcome, ${user.name}!` }); }
+  function signedOut() { setAccount({ status: "signed-out" }); setNotice({ tone: "success", message: "You're signed out." }); }
   function updateSettings(next: AppSettings) { setSettings(next); saveSettings(next); }
   function resetProgress() { window.localStorage.removeItem("play-learn-progress-v1"); window.localStorage.removeItem(ALPHABET_PROGRESS_KEY); window.localStorage.removeItem(ANIMAL_PROGRESS_KEY); window.localStorage.removeItem(COLOR_PROGRESS_KEY); window.localStorage.removeItem(MISSIONS_STORAGE_KEY); window.localStorage.removeItem(ACTIVITY_STORAGE_KEY); setCompletedMissions([]); window.location.reload(); }
 
   if (!unlocked) return <main className="min-h-[calc(100vh-4.5rem)] bg-cream py-12 sm:py-20"><div className="page-container mx-auto max-w-md"><Link href="/" className="text-sm font-black text-ink underline underline-offset-4">← Back home</Link><Card className="mt-8 bg-white p-7 sm:p-10"><p className="text-xs font-black uppercase tracking-[0.2em] text-muted-ink">Grown-up check</p><h1 className="mt-3 text-3xl font-black text-ink">A quick question before the parent area</h1><p className="mt-3 leading-7 text-muted-ink">This small arithmetic check helps keep progress and settings away from little hands. Please ask an adult to answer.</p>{question ? <form onSubmit={unlock} className="mt-7"><label htmlFor="gate-answer" className="block text-xl font-black text-ink">What is {question.first} + {question.second}?</label><input id="gate-answer" inputMode="numeric" pattern="[0-9]*" value={answer} onChange={(event) => setAnswer(event.target.value)} autoComplete="off" className="mt-4 min-h-14 w-full rounded-2xl border-2 border-sky bg-cream px-4 text-2xl font-black text-ink outline-none focus:border-ink" /><Button type="submit" className="mt-4 w-full">Open parent area</Button>{gateError ? <p role="alert" className="mt-3 rounded-2xl bg-coral/40 px-4 py-3 text-sm font-black text-ink">{gateError}</p> : null}</form> : <p className="mt-7 rounded-2xl bg-sky px-4 py-3 text-sm font-black text-ink">Getting the grown-up question ready…</p>}</Card></div></main>;
 
   return <main className="min-h-[calc(100vh-4.5rem)] bg-cream pb-16 pt-8 sm:pt-12"><div className="page-container mx-auto max-w-4xl">
-    <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><Link href="/" className="text-sm font-black text-ink underline underline-offset-4">← Back home</Link><p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-muted-ink">Grown-up space</p><h1 className="mt-2 text-4xl font-black tracking-tight text-ink sm:text-5xl">Parent dashboard</h1></div><span className="rounded-full bg-mint px-4 py-2 text-sm font-black text-ink">Adult check complete</span></div>
+    <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><Link href="/" className="text-sm font-black text-ink underline underline-offset-4">← Back home</Link><p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-muted-ink">Grown-up space</p><h1 className="mt-2 text-4xl font-black tracking-tight text-ink sm:text-5xl">Parent dashboard</h1></div><button type="button" onClick={() => setTab("account")} className="max-w-full truncate rounded-full bg-mint px-4 py-2 text-sm font-black text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ink">{account.status === "signed-in" ? `Signed in as ${account.user.name}` : account.status === "loading" ? "Checking account…" : "Not signed in · Sign in"}</button></div>
 
-    <div role="tablist" aria-label="Parent area sections" className="mt-8 grid grid-cols-2 gap-2 rounded-full bg-white p-1.5 shadow-[0_4px_0_rgba(42,91,145,0.15)] sm:inline-grid">{tabs.map((item) => <button key={item.id} type="button" role="tab" id={`tab-${item.id}`} aria-selected={tab === item.id} aria-controls={`panel-${item.id}`} onClick={() => setTab(item.id)} className={`min-h-11 rounded-full px-6 text-sm font-black transition focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ink ${tab === item.id ? "bg-ink text-white" : "text-ink hover:bg-cream"}`}>{item.label}</button>)}</div>
+    <div role="tablist" aria-label="Parent area sections" className="mt-8 grid grid-cols-3 gap-2 rounded-full bg-white p-1.5 shadow-[0_4px_0_rgba(42,91,145,0.15)] sm:inline-grid">{tabs.map((item) => <button key={item.id} type="button" role="tab" id={`tab-${item.id}`} aria-selected={tab === item.id} aria-controls={`panel-${item.id}`} onClick={() => setTab(item.id)} className={`min-h-11 rounded-full px-4 text-sm font-black transition sm:px-6 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ink ${tab === item.id ? "bg-ink text-white" : "text-ink hover:bg-cream"}`}>{item.label}</button>)}</div>
 
     {tab === "progress" ? <section role="tabpanel" id="panel-progress" aria-labelledby="tab-progress" className="mt-6 grid gap-6">
       <ProgressOverview report={report} missionsDone={missionsDone} missionsTotal={homeMissions.length} now={now} />
       <h2 className="mt-2 text-2xl font-black text-ink">Progress by game</h2>
       {report.games.map((game) => <GameProgressCard key={game.id} report={game} now={now} />)}
+    </section> : tab === "account" ? <section role="tabpanel" id="panel-account" aria-labelledby="tab-account" className="mt-6">
+      <AccountPanel account={account} providers={providers} notice={notice} onSignedIn={signedIn} onSignedOut={signedOut} onRetry={() => void loadAccount()} />
     </section> : <section role="tabpanel" id="panel-settings" aria-labelledby="tab-settings" className="mt-6">
       <Card className="bg-white p-6 sm:p-8"><h2 className="text-2xl font-black text-ink">Child profile</h2><fieldset className="mt-5"><legend className="text-sm font-black text-ink">Age range</legend><div className="mt-3 grid gap-3 sm:grid-cols-2">{(["3-4", "5-6"] as AgeRange[]).map((age) => <label key={age} className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 font-black ${settings.ageRange === age ? "border-ink bg-sky" : "border-sky bg-white"}`}><input type="radio" name="age-range" checked={settings.ageRange === age} onChange={() => updateSettings({ ...settings, ageRange: age })} />{age} years</label>)}</div></fieldset></Card>
       <Card className="mt-6 bg-white p-6 sm:p-8"><h2 className="text-2xl font-black text-ink">Play preferences</h2><div className="mt-5 grid gap-3"><label className="flex min-h-14 cursor-pointer items-center justify-between gap-4 rounded-2xl bg-cream px-4 font-black text-ink"><span>Sound effects and spoken words</span><input type="checkbox" checked={settings.soundOn} onChange={(event) => updateSettings({ ...settings, soundOn: event.target.checked })} className="size-5 accent-[#30465D]" /></label><label className="flex min-h-14 cursor-pointer items-center justify-between gap-4 rounded-2xl bg-cream px-4 font-black text-ink"><span>Reduce movement</span><input type="checkbox" checked={settings.reducedMotion} onChange={(event) => updateSettings({ ...settings, reducedMotion: event.target.checked })} className="size-5 accent-[#30465D]" /></label><label className="flex min-h-14 cursor-pointer items-center justify-between gap-4 rounded-2xl bg-cream px-4 font-black text-ink"><span>Warm color theme</span><input type="checkbox" checked={settings.warmTheme} onChange={(event) => updateSettings({ ...settings, warmTheme: event.target.checked })} className="size-5 accent-[#30465D]" /></label><label className="flex flex-col items-start gap-2 rounded-2xl bg-cream px-4 py-4 font-black text-ink sm:flex-row sm:items-center sm:justify-between"><span>Session reminder interval</span><select value={settings.reminderInterval} onChange={(event) => updateSettings({ ...settings, reminderInterval: Number(event.target.value) as ReminderInterval })} className="min-h-11 rounded-xl border-2 border-white bg-white px-3 text-sm font-black outline-none focus:border-ink"><option value={0}>Off</option><option value={15}>Every 15 minutes</option><option value={30}>Every 30 minutes</option><option value={45}>Every 45 minutes</option><option value={60}>Every 60 minutes</option></select></label></div><p className="mt-5 rounded-2xl bg-sky px-4 py-3 text-sm leading-6 text-muted-ink">Reminders are simple in-app preferences only. They are not medical protection and cannot guarantee eye comfort or safe screen time.</p></Card>

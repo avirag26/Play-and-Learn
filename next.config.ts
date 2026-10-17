@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
+// The account API (../play-and-learn-backend). Proxying it under /api keeps the browser on one origin,
+// so its httpOnly session cookies are first-party and no CORS is needed.
+const backendUrl = (process.env.BACKEND_URL ?? "http://localhost:4000").replace(/\/$/, "");
+
 const nextConfig: NextConfig = {
   devIndicators: false,
+  async rewrites() {
+    return [{ source: "/api/:path*", destination: `${backendUrl}/api/:path*` }];
+  },
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
