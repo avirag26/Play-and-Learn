@@ -1,3 +1,4 @@
+import { markPlayed } from "@/lib/activity";
 import { isAnimalId, type AnimalId } from "@/lib/animal-data";
 
 export const ANIMAL_PROGRESS_KEY = "play-learn-animal-safari-v1";
@@ -31,6 +32,6 @@ export function readAnimalProgress(): AnimalProgress {
 }
 
 export function saveAnimalProgress(progress: AnimalProgress): void {
-  try { window.localStorage.setItem(ANIMAL_PROGRESS_KEY, JSON.stringify(progress)); }
+  try { window.localStorage.setItem(ANIMAL_PROGRESS_KEY, JSON.stringify(progress)); markPlayed("animal-safari"); }
   catch { /* Storage may be unavailable; the current session still works. */ }
 }

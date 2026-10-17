@@ -1,3 +1,4 @@
+import { markPlayed } from "@/lib/activity";
 import { isColorId, isDetectiveMissionId, type ColorId } from "@/lib/color-data";
 import { isPictureId, type PictureId } from "@/lib/coloring-pictures";
 
@@ -45,7 +46,7 @@ export function readColorProgress(): ColorProgress {
 }
 
 export function saveColorProgress(progress: ColorProgress): void {
-  try { window.localStorage.setItem(COLOR_PROGRESS_KEY, JSON.stringify(progress)); }
+  try { window.localStorage.setItem(COLOR_PROGRESS_KEY, JSON.stringify(progress)); markPlayed("color-quest"); }
   catch { /* Storage may be unavailable; the current session still works. */ }
 }
 
