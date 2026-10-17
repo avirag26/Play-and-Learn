@@ -4,21 +4,67 @@ import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { AuthError, googleSignInUrl, login, logout, register, resendSignUpCode, verifySignUp, type AuthProviders, type AuthUser, type CodeSent, type SubscriptionStatus } from "@/lib/auth-client";
+import { AuthError, formatPrice, googleSignInUrl, login, logout, register, resendSignUpCode, startCheckout, verifySignUp, type AuthProviders, type AuthUser, type CodeSent, type PublicPlan } from "@/lib/auth-client";
+import { games } from "@/lib/games";
 
 export type AccountState = { status: "loading" } | { status: "signed-out" } | { status: "signed-in"; user: AuthUser } | { status: "error"; message: string };
 export type AccountNotice = { tone: "success" | "error"; message: string };
 
-/** sessionStorage flag: the grown-up passed the adult check before leaving for Google, so skip it once on return. */
+/** sessionStorage flag: the grown-up passed the adult check before leaving for Google or a payment page, so skip it once on return. */
 export const PARENT_RETURN_KEY = "play-learn-parent-return";
 
-const subscriptionLabels: Record<SubscriptionStatus, { title: string; detail: string; tint: string }> = {
-  none: { title: "Free plan", detail: "Paid subscriptions are coming soon. Your account is ready for them.", tint: "bg-sky" },
-  trialing: { title: "Free trial", detail: "Your trial is active.", tint: "bg-mint" },
-  active: { title: "Subscribed", detail: "Thank you for supporting Play & Learn.", tint: "bg-mint" },
-  past_due: { title: "Payment needed", detail: "The last payment didn't go through. Please update your payment details.", tint: "bg-sunshine/60" },
-  canceled: { title: "Subscription ended", detail: "You can subscribe again at any time.", tint: "bg-cream" },
-};
+const longDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+const durationText = (days: number) => days % 365 === 0 ? `${days / 365} year${days === 365 ? "" : "s"}` : days % 30 === 0 ? `${days / 30} month${days === 30 ? "" : "s"}` : `${days} days`;
+
+function PremiumGames({ plan }: { plan: PublicPlan }) {
+  const premium = games.filter((game) => plan.premiumGameIds.includes(game.id));
+  if (!premium.length) return null;
+  return <ul className="mt-3 flex flex-wrap gap-2">{premium.map((game) => <li key={game.id} className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-sm font-bold text-ink"><span aria-hidden="true">{game.emoji}</span>{game.title}</li>)}</ul>;
+}
+
+/** Premium status, and the button that sends the parent to the payment page. */
+function PremiumCard({ user, plan }: { user: AuthUser; plan: PublicPlan | null }) {
+  const [phone, setPhone] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const status = user.subscription.status;
+  const until = user.subscription.currentPeriodEnd;
+
+  async function buy(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const url = await startCheckout(plan?.requiresPhone ? phone : undefined);
+      try { window.sessionStorage.setItem(PARENT_RETURN_KEY, "account"); } catch { /* The adult check will simply be asked again. */ }
+      window.location.assign(url);
+    } catch (caught) {
+      setError(errorText(caught));
+      setBusy(false);
+    }
+  }
+
+  return <Card className="bg-white p-6 sm:p-8">
+    <h2 className="text-2xl font-black text-ink">Premium</h2>
+    {status === "active" && until ? <div className="mt-4 rounded-2xl bg-mint p-4"><p className="text-xl font-black text-ink"><span aria-hidden="true">⭐ </span>Premium is active</p><p className="mt-1 text-sm leading-6 text-muted-ink">Unlocked until <span className="font-black text-ink">{longDate(until)}</span>. Thank you for supporting Play &amp; Learn!</p></div>
+      : status === "expired" && until ? <div className="mt-4 rounded-2xl bg-sunshine/50 p-4"><p className="text-xl font-black text-ink">Premium has ended</p><p className="mt-1 text-sm leading-6 text-muted-ink">It ended on {longDate(until)}. Buy again to unlock the Premium games.</p></div>
+      : null}
+    {!plan ? <p className="mt-4 text-sm text-muted-ink">Loading the Premium plan…</p>
+      : <div className="mt-4 rounded-2xl bg-sky p-4">
+        <p className="text-sm font-black uppercase tracking-[0.14em] text-muted-ink">{plan.name}</p>
+        <p className="mt-1 text-3xl font-black text-ink">{formatPrice(plan.amount, plan.currency)} <span className="text-base font-bold text-muted-ink">for {durationText(plan.durationDays)}</span></p>
+        <p className="mt-1 text-sm leading-6 text-muted-ink">One payment, no automatic renewal.{status === "active" ? " Buying again adds the time on top of what's left." : ""}</p>
+        <PremiumGames plan={plan} />
+      </div>}
+    {plan && !plan.available ? <p className="mt-4 rounded-2xl bg-cream px-4 py-3 text-sm font-bold text-muted-ink">Premium isn&apos;t on sale right now. Please check back soon.</p>
+      : plan ? <form onSubmit={buy} className="mt-5 grid gap-4">
+        {plan.requiresPhone ? <label className="block text-sm font-black text-ink">Mobile number <span className="font-bold text-muted-ink">(needed by the payment provider)</span><input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} required placeholder="98765 43210" className={inputClass} /></label> : null}
+        {error ? <p role="alert" className="rounded-2xl bg-coral/40 px-4 py-3 text-sm font-black text-ink">{error}</p> : null}
+        <Button type="submit" disabled={busy} className="w-full disabled:opacity-60">{busy ? "Opening secure payment…" : status === "active" ? `Add ${durationText(plan.durationDays)} · ${formatPrice(plan.amount, plan.currency)}` : `Get Premium · ${formatPrice(plan.amount, plan.currency)}`}</Button>
+        <p className="text-center text-xs leading-5 text-muted-ink">You&apos;ll pay on our payment partner&apos;s secure page, then come straight back here.</p>
+      </form> : null}
+  </Card>;
+}
 
 const inputClass = "mt-2 min-h-12 w-full rounded-2xl border-2 border-sky bg-cream px-4 text-base font-bold text-ink outline-none focus:border-ink";
 
@@ -154,11 +200,9 @@ function SignInForm({ providers, onSignedIn }: { providers: AuthProviders | null
   </Card>;
 }
 
-function SignedIn({ user, onSignedOut }: { user: AuthUser; onSignedOut: () => void }) {
+function SignedIn({ user, plan, onSignedOut }: { user: AuthUser; plan: PublicPlan | null; onSignedOut: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const plan = subscriptionLabels[user.subscription.status] ?? subscriptionLabels.none;
-  const renews = user.subscription.currentPeriodEnd ? new Date(user.subscription.currentPeriodEnd).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" }) : null;
 
   async function signOut() {
     setBusy(true);
@@ -180,19 +224,19 @@ function SignedIn({ user, onSignedOut }: { user: AuthUser; onSignedOut: () => vo
       {error ? <p role="alert" className="mt-4 rounded-2xl bg-coral/40 px-4 py-3 text-sm font-black text-ink">{error}</p> : null}
       <Button variant="secondary" onClick={signOut} disabled={busy} className="mt-5 disabled:opacity-60">{busy ? "Signing out…" : "Sign out"}</Button>
     </Card>
-    <Card className="bg-white p-6 sm:p-8">
-      <h2 className="text-2xl font-black text-ink">Subscription</h2>
-      <div className={`mt-4 rounded-2xl p-4 ${plan.tint}`}><p className="text-xl font-black text-ink">{plan.title}{user.subscription.plan ? ` · ${user.subscription.plan}` : ""}</p><p className="mt-1 text-sm leading-6 text-muted-ink">{plan.detail}{renews && user.subscription.status === "active" ? ` Renews on ${renews}.` : ""}</p></div>
-    </Card>
+    <PremiumCard user={user} plan={plan} />
   </div>;
 }
 
-export function AccountPanel({ account, providers, notice, onSignedIn, onSignedOut, onRetry }: { account: AccountState; providers: AuthProviders | null; notice: AccountNotice | null; onSignedIn: (user: AuthUser) => void; onSignedOut: () => void; onRetry: () => void }) {
+export function AccountPanel({ account, providers, plan, notice, onSignedIn, onSignedOut, onRetry }: { account: AccountState; providers: AuthProviders | null; plan: PublicPlan | null; notice: AccountNotice | null; onSignedIn: (user: AuthUser) => void; onSignedOut: () => void; onRetry: () => void }) {
   return <div className="grid gap-6">
     {notice ? <Notice notice={notice} /> : null}
     {account.status === "loading" ? <Card className="bg-white p-6 sm:p-8"><p className="text-sm font-black text-ink">Checking your account…</p></Card>
       : account.status === "error" ? <Card className="bg-white p-6 sm:p-8"><h2 className="text-2xl font-black text-ink">Account unavailable</h2><p className="mt-2 text-sm leading-6 text-muted-ink">{account.message}</p><Button variant="secondary" onClick={onRetry} className="mt-5">Try again</Button></Card>
-      : account.status === "signed-in" ? <SignedIn user={account.user} onSignedOut={onSignedOut} />
-      : <SignInForm providers={providers} onSignedIn={onSignedIn} />}
+      : account.status === "signed-in" ? <SignedIn user={account.user} plan={plan} onSignedOut={onSignedOut} />
+      : <>
+        {plan?.available ? <Card className="bg-sky p-6 sm:p-8"><p className="text-sm font-black uppercase tracking-[0.14em] text-muted-ink"><span aria-hidden="true">⭐ </span>{plan.name}</p><p className="mt-1 text-2xl font-black text-ink">{formatPrice(plan.amount, plan.currency)} for {durationText(plan.durationDays)}</p><p className="mt-1 text-sm leading-6 text-muted-ink">Sign in or create an account to unlock:</p><PremiumGames plan={plan} /></Card> : null}
+        <SignInForm providers={providers} onSignedIn={onSignedIn} />
+      </>}
   </div>;
 }

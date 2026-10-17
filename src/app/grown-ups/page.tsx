@@ -11,7 +11,8 @@ import { GameProgressCard, ProgressOverview } from "@/features/parent/progress-d
 import { ACTIVITY_STORAGE_KEY, readLastPlayed, type LastPlayed } from "@/lib/activity";
 import { ANIMAL_PROGRESS_KEY, emptyAnimalProgress, readAnimalProgress, type AnimalProgress } from "@/lib/animal-progress";
 import { animalSoundCredits } from "@/lib/animal-sounds";
-import { AuthError, getCurrentUser, getProviders, googleErrorMessage, type AuthProviders, type AuthUser } from "@/lib/auth-client";
+import { AuthError, getCurrentUser, getPlan, getProviders, googleErrorMessage, type AuthProviders, type AuthUser, type PublicPlan } from "@/lib/auth-client";
+import { refreshPremium } from "@/lib/premium";
 import { COLOR_PROGRESS_KEY, emptyColorProgress, readColorProgress, type ColorProgress } from "@/lib/color-progress";
 import { ALPHABET_PROGRESS_KEY, emptyAlphabetProgress, readAlphabetProgress, type AlphabetProgress } from "@/lib/alphabet-progress";
 import { DEFAULT_SETTINGS, MISSIONS_STORAGE_KEY, type AgeRange, type AppSettings, type ReminderInterval, readCompletedMissions, readSettings, saveSettings } from "@/lib/app-settings";
@@ -24,16 +25,23 @@ function makeGateQuestion(): GateQuestion { const first = Math.floor(Math.random
 type Tab = "progress" | "account" | "settings";
 const tabs: readonly { id: Tab; label: string }[] = [{ id: "progress", label: "Progress" }, { id: "account", label: "Account" }, { id: "settings", label: "Settings" }];
 
-/** Reads and clears the result the API adds to the URL after Google sign-in. */
-function takeGoogleResult(): AccountNotice | null {
+const paymentMessages: Record<string, AccountNotice> = {
+  success: { tone: "success", message: "Payment received. Premium is unlocked. Thank you!" },
+  pending: { tone: "success", message: "We're still confirming your payment with the bank. This usually takes a minute; Premium unlocks as soon as it's confirmed." },
+  failed: { tone: "error", message: "The payment didn't go through, so nothing was added. You can try again." },
+};
+
+/** Reads and clears the result the API adds to the URL after Google sign-in or a payment. */
+function takeReturnResult(): AccountNotice | null {
   const url = new URL(window.location.href);
-  const success = url.searchParams.get("auth") === "google";
-  const error = url.searchParams.get("auth_error");
-  if (!success && !error) return null;
-  url.searchParams.delete("auth");
-  url.searchParams.delete("auth_error");
+  const google = url.searchParams.get("auth") === "google";
+  const googleError = url.searchParams.get("auth_error");
+  const payment = url.searchParams.get("payment");
+  if (!google && !googleError && !payment) return null;
+  for (const key of ["auth", "auth_error", "payment"]) url.searchParams.delete(key);
   window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
-  return error ? { tone: "error", message: googleErrorMessage(error) } : { tone: "success", message: "You're signed in with Google." };
+  if (payment) return paymentMessages[payment] ?? paymentMessages.failed;
+  return googleError ? { tone: "error", message: googleErrorMessage(googleError) } : { tone: "success", message: "You're signed in with Google." };
 }
 
 export default function GrownUpsPage() {
@@ -52,14 +60,18 @@ export default function GrownUpsPage() {
   const [resetOpen, setResetOpen] = useState(false);
   const [account, setAccount] = useState<AccountState>({ status: "loading" });
   const [providers, setProviders] = useState<AuthProviders | null>(null);
+  const [plan, setPlan] = useState<PublicPlan | null>(null);
   const [notice, setNotice] = useState<AccountNotice | null>(null);
 
   const loadAccount = useCallback(async () => {
     setAccount({ status: "loading" });
     try {
-      const [user, available] = await Promise.all([getCurrentUser(), getProviders()]);
+      const [user, available, premiumPlan] = await Promise.all([getCurrentUser(), getProviders(), getPlan()]);
       setProviders(available);
+      setPlan(premiumPlan);
       setAccount(user ? { status: "signed-in", user } : { status: "signed-out" });
+      // Keep the games' Premium locks in step with what the account shows.
+      void refreshPremium();
     } catch (error) {
       setAccount({ status: "error", message: error instanceof AuthError ? error.message : "Couldn't load your account." });
     }
@@ -69,9 +81,9 @@ export default function GrownUpsPage() {
     // Coming back from Google: the adult check was already passed before leaving.
     let returning = false;
     try { returning = window.sessionStorage.getItem(PARENT_RETURN_KEY) === "account"; window.sessionStorage.removeItem(PARENT_RETURN_KEY); } catch { /* Ask the adult check again. */ }
-    const googleResult = takeGoogleResult();
-    if (googleResult) { setNotice(googleResult); setTab("account"); }
-    if (returning && googleResult) setUnlocked(true);
+    const returnResult = takeReturnResult();
+    if (returnResult) { setNotice(returnResult); setTab("account"); }
+    if (returning && returnResult) setUnlocked(true);
   }, 0); return () => window.clearTimeout(timer); }, []);
   useEffect(() => { if (!unlocked) return; const timer = window.setTimeout(() => void loadAccount(), 0); return () => window.clearTimeout(timer); }, [unlocked, loadAccount]);
   useEffect(() => { if (!unlocked) return; document.documentElement.dataset.theme = settings.warmTheme ? "warm" : "soft"; document.documentElement.dataset.reducedMotion = settings.reducedMotion ? "true" : "false"; }, [settings, unlocked]);
@@ -80,8 +92,8 @@ export default function GrownUpsPage() {
   const missionsDone = homeMissions.filter((mission) => completedMissions.includes(mission.id)).length;
 
   function unlock(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (!question || Number(answer) !== question.answer) { setGateError("That answer needs another try. Ask a grown-up to solve it together."); setAnswer(""); setQuestion(makeGateQuestion()); return; } setUnlocked(true); setGateError(""); }
-  function signedIn(user: AuthUser) { setAccount({ status: "signed-in", user }); setNotice({ tone: "success", message: `Welcome, ${user.name}!` }); }
-  function signedOut() { setAccount({ status: "signed-out" }); setNotice({ tone: "success", message: "You're signed out." }); }
+  function signedIn(user: AuthUser) { setAccount({ status: "signed-in", user }); setNotice({ tone: "success", message: `Welcome, ${user.name}!` }); void refreshPremium(); }
+  function signedOut() { setAccount({ status: "signed-out" }); setNotice({ tone: "success", message: "You're signed out." }); void refreshPremium(); }
   function updateSettings(next: AppSettings) { setSettings(next); saveSettings(next); }
   function resetProgress() { window.localStorage.removeItem("play-learn-progress-v1"); window.localStorage.removeItem(ALPHABET_PROGRESS_KEY); window.localStorage.removeItem(ANIMAL_PROGRESS_KEY); window.localStorage.removeItem(COLOR_PROGRESS_KEY); window.localStorage.removeItem(MISSIONS_STORAGE_KEY); window.localStorage.removeItem(ACTIVITY_STORAGE_KEY); setCompletedMissions([]); window.location.reload(); }
 
@@ -97,7 +109,7 @@ export default function GrownUpsPage() {
       <h2 className="mt-2 text-2xl font-black text-ink">Progress by game</h2>
       {report.games.map((game) => <GameProgressCard key={game.id} report={game} now={now} />)}
     </section> : tab === "account" ? <section role="tabpanel" id="panel-account" aria-labelledby="tab-account" className="mt-6">
-      <AccountPanel account={account} providers={providers} notice={notice} onSignedIn={signedIn} onSignedOut={signedOut} onRetry={() => void loadAccount()} />
+      <AccountPanel account={account} providers={providers} plan={plan} notice={notice} onSignedIn={signedIn} onSignedOut={signedOut} onRetry={() => void loadAccount()} />
     </section> : <section role="tabpanel" id="panel-settings" aria-labelledby="tab-settings" className="mt-6">
       <Card className="bg-white p-6 sm:p-8"><h2 className="text-2xl font-black text-ink">Child profile</h2><fieldset className="mt-5"><legend className="text-sm font-black text-ink">Age range</legend><div className="mt-3 grid gap-3 sm:grid-cols-2">{(["3-4", "5-6"] as AgeRange[]).map((age) => <label key={age} className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 font-black ${settings.ageRange === age ? "border-ink bg-sky" : "border-sky bg-white"}`}><input type="radio" name="age-range" checked={settings.ageRange === age} onChange={() => updateSettings({ ...settings, ageRange: age })} />{age} years</label>)}</div></fieldset></Card>
       <Card className="mt-6 bg-white p-6 sm:p-8"><h2 className="text-2xl font-black text-ink">Play preferences</h2><div className="mt-5 grid gap-3"><label className="flex min-h-14 cursor-pointer items-center justify-between gap-4 rounded-2xl bg-cream px-4 font-black text-ink"><span>Sound effects and spoken words</span><input type="checkbox" checked={settings.soundOn} onChange={(event) => updateSettings({ ...settings, soundOn: event.target.checked })} className="size-5 accent-[#30465D]" /></label><label className="flex min-h-14 cursor-pointer items-center justify-between gap-4 rounded-2xl bg-cream px-4 font-black text-ink"><span>Reduce movement</span><input type="checkbox" checked={settings.reducedMotion} onChange={(event) => updateSettings({ ...settings, reducedMotion: event.target.checked })} className="size-5 accent-[#30465D]" /></label><label className="flex min-h-14 cursor-pointer items-center justify-between gap-4 rounded-2xl bg-cream px-4 font-black text-ink"><span>Warm color theme</span><input type="checkbox" checked={settings.warmTheme} onChange={(event) => updateSettings({ ...settings, warmTheme: event.target.checked })} className="size-5 accent-[#30465D]" /></label><label className="flex flex-col items-start gap-2 rounded-2xl bg-cream px-4 py-4 font-black text-ink sm:flex-row sm:items-center sm:justify-between"><span>Session reminder interval</span><select value={settings.reminderInterval} onChange={(event) => updateSettings({ ...settings, reminderInterval: Number(event.target.value) as ReminderInterval })} className="min-h-11 rounded-xl border-2 border-white bg-white px-3 text-sm font-black outline-none focus:border-ink"><option value={0}>Off</option><option value={15}>Every 15 minutes</option><option value={30}>Every 30 minutes</option><option value={45}>Every 45 minutes</option><option value={60}>Every 60 minutes</option></select></label></div><p className="mt-5 rounded-2xl bg-sky px-4 py-3 text-sm leading-6 text-muted-ink">Reminders are simple in-app preferences only. They are not medical protection and cannot guarantee eye comfort or safe screen time.</p></Card>
