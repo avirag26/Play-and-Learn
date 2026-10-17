@@ -14,7 +14,7 @@ import { MIN_SOUND_ANIMALS, makeFindChoices, makeFindSession, makeSoundChoices, 
 import { animalSoundFiles } from "@/lib/animal-sounds";
 import { speakableText } from "@/lib/encouragement";
 import { playSound, stopSound } from "@/lib/sound-player";
-import { speak, stopSpeech } from "@/lib/speech";
+import { speak, stopSpeech, type AudioErrorHandler } from "@/lib/speech";
 
 const modeNames: Record<AnimalMode, string> = {
   meet: "Meet the Animals",
@@ -31,7 +31,7 @@ function stopAllAudio() {
 }
 
 /** Speech never talks over an animal sound: whichever starts last wins. */
-function say(text: string, onError?: () => void) {
+function say(text: string, onError?: AudioErrorHandler) {
   stopSound();
   return speak(text, onError);
 }

@@ -1,6 +1,9 @@
 import { readSettings } from "@/lib/app-settings";
 
-export type AudioResult = "spoken" | "playing" | "muted" | "unavailable";
+/** "unsupported": the browser has no speech or audio at all (common in in-app browsers such as WhatsApp's). */
+export type AudioResult = "spoken" | "playing" | "muted" | "unsupported" | "unavailable";
+/** Called with a short reason code (the browser's own error name) when audio fails after starting. */
+export type AudioErrorHandler = (reason: string) => void;
 
 // The Web Speech API does not expose a voice's gender, so match well-known female voice names
 // across Windows, macOS/iOS, Android/Chrome and Edge.
@@ -34,9 +37,9 @@ if (typeof window !== "undefined" && "speechSynthesis" in window) {
   }
 }
 
-export function speak(text: string, onError?: () => void): "spoken" | "muted" | "unavailable" {
+export function speak(text: string, onError?: AudioErrorHandler): "spoken" | "muted" | "unsupported" | "unavailable" {
   if (!readSettings().soundOn) return "muted";
-  if (typeof window === "undefined" || !("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) return "unavailable";
+  if (typeof window === "undefined" || !("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) return "unsupported";
   const makeUtterance = (voice: SpeechSynthesisVoice | null): SpeechSynthesisUtterance => {
     const utterance = new SpeechSynthesisUtterance(text);
     if (voice) utterance.voice = voice;
@@ -47,7 +50,7 @@ export function speak(text: string, onError?: () => void): "spoken" | "muted" | 
       if (event && harmlessErrors.has(event.error)) return;
       // A chosen voice can be missing or network-only on the phone; retry once with the phone's default voice.
       if (voice) { window.speechSynthesis.speak(makeUtterance(null)); return; }
-      onError?.();
+      onError?.(event?.error ?? "speech-error");
     };
     return utterance;
   };

@@ -127,8 +127,9 @@ test("sound player reuses one element, ignores sounds it stopped on purpose, and
   const browserWindow = { localStorage: { getItem: (key) => storage.get(key) ?? null }, Audio: FakeAudio };
   const { playSound, stopSound } = load("src/lib/sound-player.ts", browserWindow);
   let lionFailed = 0, cowFailed = 0;
+  const reasons = [];
   assert.equal(playSound("/sounds/animals/lion.mp3", () => lionFailed++), "playing");
-  assert.equal(playSound("/sounds/animals/cow.mp3", () => cowFailed++), "playing");
+  assert.equal(playSound("/sounds/animals/cow.mp3", (reason) => { cowFailed++; reasons.push(reason); }), "playing");
   assert.equal(created.length, 1, "one shared element (iOS only lets an unlocked element play later)");
   assert.equal(created[0].src, "/sounds/animals/cow.mp3");
   created[0].rejections[0]({ name: "AbortError" });
@@ -140,6 +141,7 @@ test("sound player reuses one element, ignores sounds it stopped on purpose, and
   assert.equal(cowFailed, 1, "AbortError is not a failure");
   created[0].rejections[1]({ name: "NotAllowedError" });
   assert.equal(cowFailed, 2);
+  assert.deepEqual(reasons, ["media-error-unknown", "NotAllowedError"], "failures carry the browser's reason");
   stopSound();
   assert.equal(created[0].paused, true);
   created[0].rejections[1]({ name: "NotAllowedError" });
@@ -148,7 +150,7 @@ test("sound player reuses one element, ignores sounds it stopped on purpose, and
   assert.equal(playSound("/sounds/animals/lion.mp3"), "muted");
   cache.clear();
   const noAudio = load("src/lib/sound-player.ts", { localStorage: { getItem: () => null } });
-  assert.equal(noAudio.playSound("/sounds/animals/lion.mp3"), "unavailable");
+  assert.equal(noAudio.playSound("/sounds/animals/lion.mp3"), "unsupported");
 });
 
 test("speech ignores cancelled sentences and retries a failing voice with the default voice", () => {
@@ -172,6 +174,11 @@ test("speech ignores cancelled sentences and retries a failing voice with the de
   assert.equal(spoken.length, 2, "retries once");
   assert.equal(spoken[1].voice, undefined, "the retry uses the phone's default voice");
   assert.equal(spoken[1].text, "Lion");
+  let reason;
+  speak("Lion", (code) => { reason = code; });
+  spoken.at(-1).onerror({ error: "synthesis-failed" });
+  spoken.at(-1).onerror({ error: "synthesis-failed" });
+  assert.equal(reason, "synthesis-failed", "the failure carries the browser's error code");
   spoken[1].onerror({ error: "synthesis-failed" });
   assert.equal(failures, 1, "reports a failure only when the default voice fails too");
 });

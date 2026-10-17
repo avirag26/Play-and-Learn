@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { SpeakerButton } from "@/features/games/game-ui";
 import { AnimalArt } from "@/features/animal-safari/animal-art";
 import { habitats, type AnimalEntry } from "@/lib/animal-data";
-import type { AudioResult } from "@/lib/speech";
+import type { AudioErrorHandler, AudioResult } from "@/lib/speech";
 
 type Props = {
   animal: AnimalEntry;
@@ -12,8 +12,8 @@ type Props = {
   hasNext: boolean;
   onBack: () => void;
   onMove: (delta: number) => void;
-  say: (text: string, onError: () => void) => AudioResult;
-  playSound: (src: string, onError: () => void) => AudioResult;
+  say: (text: string, onError: AudioErrorHandler) => AudioResult;
+  playSound: (src: string, onError: AudioErrorHandler) => AudioResult;
   onStatus: (message: string) => void;
 };
 

@@ -1,5 +1,5 @@
 import { readSettings } from "@/lib/app-settings";
-import { stopSpeech } from "@/lib/speech";
+import { stopSpeech, type AudioErrorHandler } from "@/lib/speech";
 
 // One shared <audio> element. iOS only lets an element play without a tap once it has played
 // during a tap, so the element is "unlocked" with a silent clip on the first touch anywhere.
@@ -37,22 +37,22 @@ if (typeof document !== "undefined") {
 }
 
 /** Plays one local sound file at a time; any earlier sound or speech is stopped first. */
-export function playSound(src: string, onError?: () => void): "playing" | "muted" | "unavailable" {
+export function playSound(src: string, onError?: AudioErrorHandler): "playing" | "muted" | "unsupported" | "unavailable" {
   if (!readSettings().soundOn) return "muted";
   const audio = getPlayer();
-  if (!audio) return "unavailable";
+  if (!audio) return "unsupported";
   stopSound();
   stopSpeech();
   const id = ++playId;
   // Only failures of the sound that is still current count; a sound we stopped on purpose is not an error.
-  const fail = (error?: unknown) => {
-    if (id !== playId || (error as { name?: string } | undefined)?.name === "AbortError") return;
-    onError?.();
+  const fail = (reason: string) => {
+    if (id !== playId || reason === "AbortError") return;
+    onError?.(reason);
   };
   try {
-    audio.onerror = () => fail();
+    audio.onerror = () => fail(`media-error-${audio.error?.code ?? "unknown"}`);
     audio.src = src;
-    audio.play()?.catch(fail);
+    audio.play()?.catch((error: { name?: string } | undefined) => fail(error?.name ?? "play-failed"));
     return "playing";
   } catch { return "unavailable"; }
 }

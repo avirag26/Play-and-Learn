@@ -77,7 +77,7 @@ test("speech gracefully handles muted and unsupported browsers", () => {
   const storage = new Map();
   const browserWindow = { localStorage: { getItem: (key) => storage.get(key) ?? null } };
   const { speakAlphabet } = load("src/lib/alphabet-speech.ts", browserWindow);
-  assert.equal(speakAlphabet("A. Apple."), "unavailable");
+  assert.equal(speakAlphabet("A. Apple."), "unsupported");
   storage.set("play-learn-settings-v1", JSON.stringify({ soundOn: false }));
   assert.equal(speakAlphabet("A. Apple."), "muted");
 });

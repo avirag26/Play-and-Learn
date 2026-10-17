@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { PageContainer } from "@/components/ui/page-container";
 import { BearMascot } from "@/features/home/illustrations";
 import type { QuizFeedback } from "@/features/games/use-quiz-session";
-import type { AudioResult } from "@/lib/speech";
+import type { AudioErrorHandler, AudioResult } from "@/lib/speech";
 
 const pillLink = "inline-flex min-h-11 items-center rounded-full bg-white px-5 text-sm font-black text-ink underline underline-offset-4 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-ink";
 
@@ -38,13 +38,14 @@ export function ProgressBar({ current, total }: { current: number; total: number
   return <div className="mt-3 sm:mt-5"><p className="sr-only text-center text-sm font-black text-ink sm:not-sr-only">{current} of {total}</p><div className="h-3 overflow-hidden rounded-full bg-white sm:mt-2" role="progressbar" aria-label="Activity progress" aria-valuemin={0} aria-valuemax={total} aria-valuenow={current}><div className="h-full rounded-full bg-[#6ab484] transition-[width]" style={{ width: `${current / total * 100}%` }} /></div></div>;
 }
 
-export function audioStatusMessage(result: AudioResult): string {
-  return result === "muted" ? "Sound is off in grown-up settings. You can keep playing!" : result === "unavailable" ? "Can't play sound here. Check the phone isn't on silent, or open the app in Chrome or Safari. You can keep playing!" : "Playing audio.";
+/** Messages for the grown-up; the reason code in brackets helps diagnose a specific phone. */
+export function audioStatusMessage(result: AudioResult, reason?: string): string {
+  return result === "muted" ? "Sound is off in grown-up settings. You can keep playing!" : result === "unsupported" ? "This browser can't play sound. Open the app in Chrome or Safari (not inside WhatsApp, Instagram, or Facebook). You can keep playing!" : result === "unavailable" ? `Can't play sound here${reason ? ` (${reason})` : ""}. Check the phone isn't on silent and the volume is up. You can keep playing!` : "Playing audio.";
 }
 
 /** A large audio button. `onPlay` starts speech or a sound and reports how it went. */
-export function SpeakerButton({ label, onPlay, onStatus, icon = "🔊", children = "Hear it again" }: { label: string; onPlay: (onError: () => void) => AudioResult; onStatus: (message: string) => void; icon?: string; children?: ReactNode }) {
-  return <button type="button" onClick={() => onStatus(audioStatusMessage(onPlay(() => onStatus(audioStatusMessage("unavailable")))))} aria-label={label} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border-2 border-ink bg-white px-5 text-sm font-black text-ink focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-ink sm:min-h-12"><span aria-hidden="true">{icon}</span> {children}</button>;
+export function SpeakerButton({ label, onPlay, onStatus, icon = "🔊", children = "Hear it again" }: { label: string; onPlay: (onError: AudioErrorHandler) => AudioResult; onStatus: (message: string) => void; icon?: string; children?: ReactNode }) {
+  return <button type="button" onClick={() => onStatus(audioStatusMessage(onPlay((reason) => onStatus(audioStatusMessage("unavailable", reason)))))} aria-label={label} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border-2 border-ink bg-white px-5 text-sm font-black text-ink focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-ink sm:min-h-12"><span aria-hidden="true">{icon}</span> {children}</button>;
 }
 
 export function AudioStatus({ message }: { message: string }) {
