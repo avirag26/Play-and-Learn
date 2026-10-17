@@ -6,8 +6,73 @@
 * { box-sizing:border-box; }
 html { scroll-behavior:smooth; }
 body { background:var(--background); color:var(--foreground); font-family:"Trebuchet MS", "Nunito", "Avenir Next", sans-serif; margin:0; }
-a { color:inherit; text-decoration:none; }
+.app-shell { --nav-space:calc(5rem + env(safe-area-inset-bottom, 0px)); display:flex; flex-direction:column; min-height:100dvh; min-width:0; padding-bottom:var(--nav-space); background:var(--cream); }
+.app-content { flex:1; min-width:0; outline:none; }
+.app-content > main { min-height:0; }
+.page-container { padding-inline:max(1rem, env(safe-area-inset-left, 0px)) max(1rem, env(safe-area-inset-right, 0px)); }
+.app-header { position:sticky; top:0; z-index:40; padding-top:env(safe-area-inset-top, 0px); background:rgba(255,255,255,.96); border-bottom:1px solid rgba(48,70,93,.09); box-shadow:0 2px 14px rgba(48,70,93,.04); }
+.app-brand { display:inline-flex; align-items:center; gap:.65rem; min-height:48px; border-radius:1rem; color:var(--ink); font-size:1.05rem; font-weight:900; white-space:nowrap; }
+.brand-mark { display:grid; place-items:center; width:40px; height:40px; border-radius:14px; background:var(--sunshine); color:var(--ink); font-size:1.7rem; }
+.parent-entry { display:grid; place-items:center; flex-shrink:0; width:48px; height:48px; border:1px solid rgba(48,70,93,.12); border-radius:16px; background:var(--sky); color:var(--ink); }
+.desktop-navigation { display:none; }
+.mobile-navigation { position:fixed; inset:auto 0 0; z-index:45; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.25rem; padding:.5rem max(.5rem,env(safe-area-inset-right,0px)) max(.5rem,env(safe-area-inset-bottom,0px)) max(.5rem,env(safe-area-inset-left,0px)); background:rgba(255,255,255,.98); border-top:1px solid rgba(48,70,93,.1); box-shadow:0 -4px 24px rgba(48,70,93,.07); }
+.app-nav-link { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.2rem; min-width:0; min-height:56px; border-radius:16px; color:var(--ink); font-size:.7rem; font-weight:800; white-space:nowrap; }
+.app-nav-icon { display:grid; place-items:center; width:42px; height:28px; border-radius:12px; }
+.app-nav-link[aria-current="page"] { background:var(--sky); }
+.app-nav-link[aria-current="page"] .app-nav-icon { background:var(--mint); }
+.app-nav-link:hover { background:var(--cream); }
+.app-nav-link:focus-visible, .app-brand:focus-visible, .parent-entry:focus-visible { outline:3px solid var(--ink); outline-offset:2px; }
+.app-footer { padding-block:1.5rem; border-top:1px solid rgba(48,70,93,.08); font-size:.75rem; line-height:1.6; color:var(--muted-ink); text-align:center; }
+.home-screen { padding-block:2rem; }
+.home-panel { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,.8fr); grid-template-areas:"welcome mascot" "game mascot"; align-items:center; gap:1.5rem 2rem; max-width:64rem; margin-inline:auto; padding:2rem; border:3px solid rgba(255,255,255,.7); border-radius:2rem; background:#b6e4ed; }
+.home-welcome { grid-area:welcome; min-width:0; }
+.home-title { margin-top:.5rem; font-size:clamp(2rem,5vw,3.5rem); line-height:1.1; }
+.home-intro { margin-top:.5rem; font-size:1rem; line-height:1.5; }
+.home-game { grid-area:game; min-width:0; padding:1.25rem; }
+.home-game-title { margin-top:.3rem; font-size:1.5rem; line-height:1.2; }
+.home-game-description { margin-top:.4rem; font-size:.875rem; line-height:1.5; }
+.home-actions { display:grid; gap:.5rem; margin-top:1rem; }
+.home-mascot { grid-area:mascot; min-width:0; min-height:0; width:100%; height:100%; max-height:20rem; align-self:center; }
+@media (max-width:767px) {
+  .app-shell:has(.home-screen) { height:100dvh; }
+  .app-shell:has(.home-screen) .app-content { display:flex; min-height:0; }
+  .app-shell:has(.home-screen) .app-footer { display:none; }
+  .home-screen { display:flex; flex:1; min-width:0; padding-block:.75rem; }
+  .home-panel { flex:1; min-width:0; min-height:0; grid-template-columns:minmax(0,1fr); grid-template-areas:"welcome" "mascot" "game"; grid-template-rows:auto minmax(0,1fr) auto; gap:.75rem; padding:1rem; border-radius:1.75rem; }
+  .home-title { font-size:clamp(1.9rem,8vw,2.5rem); }
+  .home-intro { font-size:.875rem; }
+  .home-game { padding:.875rem; }
+  .home-game-title { font-size:clamp(1.2rem,5.5vw,1.5rem); }
+  .home-actions { margin-top:.75rem; }
+}
+@media (max-width:767px) and (max-height:680px) {
+  .home-panel { grid-template-columns:minmax(0,1fr) 64px; grid-template-areas:"welcome mascot" "game game"; grid-template-rows:auto auto; align-content:center; gap:.75rem .5rem; padding:.75rem; }
+  .home-title { font-size:1.75rem; }
+  .home-welcome > p:first-child { font-size:.6rem; letter-spacing:.1em; }
+  .home-intro { font-size:.8rem; }
+}
+.skip-link { position:fixed; top:1rem; left:1rem; z-index:100; transform:translateY(-200%); border-radius:1rem; padding:1rem; background:var(--ink); color:white; }
+.skip-link:focus { transform:translateY(0); }
+.confirm-dialog { position:fixed; inset:0; margin:auto; width:calc(100% - 2rem); max-width:28rem; max-height:calc(100dvh - 2rem - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); overflow-y:auto; overscroll-behavior:contain; border:3px solid white; border-radius:2rem; padding:0; background:var(--cream); color:var(--ink); box-shadow:0 18px 70px rgba(48,70,93,.25); }
+.confirm-dialog::backdrop { background:rgba(48,70,93,.5); backdrop-filter:blur(4px); }
+html { scroll-padding-top:calc(5.5rem + env(safe-area-inset-top,0px)); scroll-padding-bottom:calc(6rem + env(safe-area-inset-bottom,0px)); }
+@media (max-width:767px) {
+  .app-shell:has(.alphabet-screen) .app-footer { display:none; }
+  .app-shell:has(input:not([type="radio"]):not([type="checkbox"]):focus, textarea:focus) .mobile-navigation { display:none; }
+}
+@media (min-width:640px) { .page-container { padding-inline:max(2rem,env(safe-area-inset-left,0px)) max(2rem,env(safe-area-inset-right,0px)); } }
+@media (min-width:768px) {
+  .app-shell { --nav-space:env(safe-area-inset-bottom,0px); }
+  .mobile-navigation, .parent-entry { display:none; }
+  .desktop-navigation { display:flex; align-items:center; gap:.4rem; }
+  .desktop-navigation .app-nav-link { flex-direction:row; min-height:48px; gap:.4rem; padding:.4rem .8rem; font-size:.875rem; }
+  .desktop-navigation .app-nav-icon { width:28px; height:28px; }
+}
 button, a { -webkit-tap-highlight-color:transparent; }
 ::selection { background:var(--sunshine); color:var(--ink); }
+@keyframes alphabet-pop { 50% { transform:scale(1.06); } }
+.alphabet-celebrate { animation:alphabet-pop .35s ease-out; }
+/* Alphabet Adventure fills the screen between the header and the bottom menu. */
+.app-content > .alphabet-screen { min-height:calc(100dvh - 4.0625rem - env(safe-area-inset-top,0px) - var(--nav-space)); }
 @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; } }
 [data-reduced-motion="true"] *, [data-reduced-motion="true"] *::before, [data-reduced-motion="true"] *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
