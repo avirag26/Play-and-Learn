@@ -44,15 +44,15 @@ Service-worker registration runs in production builds. Production must use HTTPS
 
 ## Animal sounds
 
-No animal sound recordings ship with the app, so **Guess That Sound** shows a "coming soon" card and the Meet the Animals detail view hides its Sound button. Spoken animal names are never presented as animal sounds.
+Guess That Sound and the Meet the Animals "Sound" button use 14 real recordings in `public/sounds/animals/`: cow, sheep, pig, chicken, duck, horse, lion, elephant, owl, frog, monkey, dolphin, whale, and bear. All come from Wikimedia Commons and are public domain, CC0, CC BY, or CC BY-SA. Each was trimmed to its first few seconds of sound, loudness-normalised, and saved as a mono 64 kbps MP3 (about 360 KB in total). Sources, authors, and licences are listed in `src/lib/animal-sounds.ts` and shown under "Animal sound credits" on the grown-ups page, as the CC BY licences require. Spoken animal names are never presented as animal sounds; animals without a recording (for example giraffe or butterfly) are left out of the sound quiz.
 
-To add sounds:
+To add or replace a sound:
 
-1. Use recordings you own or that are licensed for this use (for example CC0 or public domain). Record each source and licence in `public/sounds/animals/CREDITS.md`.
-2. Save short clips (1–4 seconds) as `public/sounds/animals/<animal-id>.mp3`. The animal ids are listed in `src/lib/animal-data.ts`.
-3. List each file in `src/lib/animal-sounds.ts`, for example `lion: "/sounds/animals/lion.mp3",`.
+1. Use a recording you own or that is licensed for this use (public domain, CC0, CC BY, or CC BY-SA).
+2. Save a short clip (1–4 seconds, one clear sound) as `public/sounds/animals/<animal-id>.mp3`. Animal ids are listed in `src/lib/animal-data.ts`.
+3. Add an entry with its source, author, licence, and link to `animalSoundCredits` in `src/lib/animal-sounds.ts`.
 
-`npm run test:games` fails if a listed file is missing. The sound quiz turns on automatically once at least three animals have sounds, and only those animals are used as sound questions.
+`npm run test:games` fails if a listed file is missing. The sound quiz needs at least three animals with sounds. The service worker caches sounds after they are first played.
 
 ## Deployment
 
@@ -65,7 +65,7 @@ This Next.js project can be deployed to a host that supports Next.js. Run `npm r
 - [ ] Play Find and Match, including wrong answers, correct answers, and session summaries.
 - [ ] Reload and confirm alphabet progress persists; check sound on, sound off, and browsers without speech synthesis.
 - [ ] In Animal Safari, open all 24 animals across the four habitats, replay names and facts, and finish Meet the Animals.
-- [ ] Play Find the Animal, including wrong answers, Previous/Next, and the summary. Confirm Guess That Sound shows "coming soon" until sound files are added.
+- [ ] Play Find the Animal, including wrong answers, Previous/Next, and the summary. Play Guess That Sound and confirm each sound matches the correct animal.
 - [ ] Confirm removed routes `/letter-adventure` and `/color-quest` return 404.
 - [ ] Complete a Home Mission, reload, and confirm its progress remains.
 - [ ] Change grown-up settings, reload, and confirm they persist.

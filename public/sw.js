@@ -1,4 +1,4 @@
-const VERSION = "v4";
+const VERSION = "v5";
 const SHELL_CACHE = `play-learn-shell-${VERSION}`;
 const STATIC_CACHE = `play-learn-static-${VERSION}`;
 const RUNTIME_CACHE = `play-learn-runtime-${VERSION}`;
@@ -45,7 +45,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(navigationFirst(request));
     return;
   }
-  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icon-") || url.pathname === "/apple-touch-icon.svg" || url.pathname === "/manifest.webmanifest") {
+  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/sounds/") || url.pathname.startsWith("/icon-") || url.pathname === "/apple-touch-icon.svg" || url.pathname === "/manifest.webmanifest") {
     event.respondWith(cacheFirst(request));
   }
 });
