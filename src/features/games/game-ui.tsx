@@ -39,7 +39,7 @@ export function ProgressBar({ current, total }: { current: number; total: number
 }
 
 export function audioStatusMessage(result: AudioResult): string {
-  return result === "muted" ? "Sound is off in grown-up settings. You can keep playing!" : result === "unavailable" ? "Audio is unavailable here. You can keep playing!" : "Playing audio.";
+  return result === "muted" ? "Sound is off in grown-up settings. You can keep playing!" : result === "unavailable" ? "Can't play sound here. Check the phone isn't on silent, or open the app in Chrome or Safari. You can keep playing!" : "Playing audio.";
 }
 
 /** A large audio button. `onPlay` starts speech or a sound and reports how it went. */

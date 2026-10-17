@@ -20,7 +20,7 @@ function load(sourcePath, browserWindow) {
   const loadedModule = { exports: {} };
   cache.set(key, loadedModule.exports);
   const localRequire = (specifier) => specifier.startsWith("@/") ? load(`src/${specifier.slice(2)}.ts`, browserWindow) : requireFromHere(specifier);
-  vm.runInNewContext("(function(require,module,exports,window){" + code + "\n})", { console })(localRequire, loadedModule, loadedModule.exports, browserWindow);
+  vm.runInNewContext("(function(require,module,exports,window){" + code + "\n})", { console, SpeechSynthesisUtterance: browserWindow?.SpeechSynthesisUtterance })(localRequire, loadedModule, loadedModule.exports, browserWindow);
   cache.set(key, loadedModule.exports);
   return loadedModule.exports;
 }
@@ -115,31 +115,63 @@ test("safari progress is sanitized and kept separate from alphabet progress", ()
   assert.equal(readAnimalProgress().discovered.length, 0);
 });
 
-test("sound player respects mute, plays one sound at a time, and reports failures", () => {
+test("sound player reuses one element, ignores sounds it stopped on purpose, and reports real failures", () => {
   cache.clear();
   const storage = new Map();
   const created = [];
   class FakeAudio {
-    constructor(src) { this.src = src; this.paused = false; created.push(this); }
-    play() { return { catch: (handler) => { this.rejectPlay = handler; } }; }
+    constructor() { this.src = ""; this.paused = true; this.rejections = []; created.push(this); }
+    play() { this.paused = false; return { catch: (handler) => { this.rejections.push(handler); } }; }
     pause() { this.paused = true; }
-    removeAttribute(name) { if (name === "src") this.src = ""; }
-    load() {}
   }
   const browserWindow = { localStorage: { getItem: (key) => storage.get(key) ?? null }, Audio: FakeAudio };
   const { playSound, stopSound } = load("src/lib/sound-player.ts", browserWindow);
-  let failed = 0;
-  assert.equal(playSound("/sounds/animals/lion.mp3", () => failed++), "playing");
-  assert.equal(playSound("/sounds/animals/cow.mp3"), "playing");
-  assert.equal(created[0].paused, true, "earlier sound stopped");
-  assert.equal(created[0].onerror, null, "stopped sound no longer reports errors");
-  created[1].rejectPlay();
+  let lionFailed = 0, cowFailed = 0;
+  assert.equal(playSound("/sounds/animals/lion.mp3", () => lionFailed++), "playing");
+  assert.equal(playSound("/sounds/animals/cow.mp3", () => cowFailed++), "playing");
+  assert.equal(created.length, 1, "one shared element (iOS only lets an unlocked element play later)");
+  assert.equal(created[0].src, "/sounds/animals/cow.mp3");
+  created[0].rejections[0]({ name: "AbortError" });
+  created[0].rejections[0]({ name: "NotAllowedError" });
+  created[0].onerror();
+  assert.equal(lionFailed, 0, "a sound replaced on purpose never reports a failure");
+  assert.equal(cowFailed, 1, "the current sound's error is reported");
+  created[0].rejections[1]({ name: "AbortError" });
+  assert.equal(cowFailed, 1, "AbortError is not a failure");
+  created[0].rejections[1]({ name: "NotAllowedError" });
+  assert.equal(cowFailed, 2);
   stopSound();
-  assert.equal(created[1].paused, true);
-  assert.equal(failed, 0);
+  assert.equal(created[0].paused, true);
+  created[0].rejections[1]({ name: "NotAllowedError" });
+  assert.equal(cowFailed, 2, "no failure reported after stopping");
   storage.set("play-learn-settings-v1", JSON.stringify({ soundOn: false }));
   assert.equal(playSound("/sounds/animals/lion.mp3"), "muted");
   cache.clear();
   const noAudio = load("src/lib/sound-player.ts", { localStorage: { getItem: () => null } });
   assert.equal(noAudio.playSound("/sounds/animals/lion.mp3"), "unavailable");
+});
+
+test("speech ignores cancelled sentences and retries a failing voice with the default voice", () => {
+  cache.clear();
+  const spoken = [];
+  const voice = { name: "Google US English", lang: "en-US", localService: false };
+  const browserWindow = {
+    localStorage: { getItem: () => null },
+    speechSynthesis: { cancel: () => {}, resume: () => {}, speak: (utterance) => spoken.push(utterance), getVoices: () => [voice] },
+    SpeechSynthesisUtterance: class { constructor(text) { this.text = text; } },
+  };
+  const { speak } = load("src/lib/speech.ts", browserWindow);
+  let failures = 0;
+  assert.equal(speak("Lion", () => failures++), "spoken");
+  assert.equal(spoken[0].voice, voice);
+  spoken[0].onerror({ error: "interrupted" });
+  spoken[0].onerror({ error: "canceled" });
+  assert.equal(spoken.length, 1, "a cancelled sentence is not retried");
+  assert.equal(failures, 0, "a cancelled sentence is not a failure");
+  spoken[0].onerror({ error: "synthesis-failed" });
+  assert.equal(spoken.length, 2, "retries once");
+  assert.equal(spoken[1].voice, undefined, "the retry uses the phone's default voice");
+  assert.equal(spoken[1].text, "Lion");
+  spoken[1].onerror({ error: "synthesis-failed" });
+  assert.equal(failures, 1, "reports a failure only when the default voice fails too");
 });
