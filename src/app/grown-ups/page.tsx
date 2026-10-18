@@ -96,7 +96,7 @@ export default function GrownUpsPage() {
 
   function unlock(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (!question || Number(answer) !== question.answer) { setGateError("That answer needs another try. Ask a grown-up to solve it together."); setAnswer(""); setQuestion(makeGateQuestion()); return; } setUnlocked(true); setGateError(""); }
   function signedIn(user: AuthUser) { setAccount({ status: "signed-in", user }); setNotice({ tone: "success", message: `Welcome, ${user.name}!` }); void refreshPremium(); }
-  function signedOut() { setAccount({ status: "signed-out" }); setNotice({ tone: "success", message: "You're signed out." }); void refreshPremium(); }
+  function signedOut(message = "You're signed out.") { setAccount({ status: "signed-out" }); setNotice({ tone: "success", message }); void refreshPremium(); }
   function updateSettings(next: AppSettings) { setSettings(next); saveSettings(next); }
   function resetProgress() { window.localStorage.removeItem("play-learn-progress-v1"); window.localStorage.removeItem(ALPHABET_PROGRESS_KEY); window.localStorage.removeItem(ANIMAL_PROGRESS_KEY); window.localStorage.removeItem(COLOR_PROGRESS_KEY); window.localStorage.removeItem(COUNT_PROGRESS_KEY); window.localStorage.removeItem(MISSIONS_STORAGE_KEY); window.localStorage.removeItem(ACTIVITY_STORAGE_KEY); setCompletedMissions([]); window.location.reload(); }
 

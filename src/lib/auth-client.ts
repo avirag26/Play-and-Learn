@@ -92,6 +92,11 @@ export async function logout(): Promise<void> {
   await call<void>("/auth/logout", { method: "POST" });
 }
 
+/** Permanently deletes the signed-in account: the password confirms it, or the email for Google-only accounts. */
+export async function deleteAccount(proof: { password: string } | { email: string }): Promise<void> {
+  await call<void>("/account/delete", { method: "POST", body: JSON.stringify(proof) });
+}
+
 /** Full-page navigation to Google; the API sends the browser back to `returnTo` afterwards. */
 export function googleSignInUrl(returnTo: string): string {
   return `/api/auth/google?${new URLSearchParams({ returnTo })}`;

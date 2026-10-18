@@ -63,12 +63,12 @@ const sections: readonly { id: string; title: string; body: ReactNode }[] = [
     <p>We may also share information if the law requires it. We never sell your information or use it for advertising.</p>
   </> },
   { id: "retention", title: "How long we keep it", body: <ul>
-    <li>Account details: until you ask us to delete your account.</li>
-    <li>Payment records: for as long as tax and accounting laws require, even after an account is deleted.</li>
+    <li>Account details: until you delete your account (<strong>Parent dashboard → Account → Delete account</strong>) or ask us to. Deleting removes them straight away.</li>
+    <li>Payment records: for as long as tax and accounting laws require. When an account is deleted, they are unlinked so they no longer identify you.</li>
     <li>Unfinished sign-ups: unused sign-up codes expire within minutes.</li>
   </ul> },
   { id: "rights", title: "Your choices and rights", body: <>
-    <p>You can ask us to <strong>see, correct or delete</strong> your personal information, or withdraw your consent, at any time. Email us from the address on your account and we will reply within 30 days. This includes your rights under India&apos;s Digital Personal Data Protection Act, 2023 and similar laws where you live.</p>
+    <p>You can <strong>delete your account yourself</strong> at any time from <strong>Parent dashboard → Account → Delete account</strong>. You can also ask us to <strong>see, correct or delete</strong> your personal information, or withdraw your consent, at any time. Email us from the address on your account and we will reply within 30 days. This includes your rights under India&apos;s Digital Personal Data Protection Act, 2023 and similar laws where you live.</p>
     <p>To remove your child&apos;s progress, use <strong>Parent dashboard → Settings → Reset progress</strong>, or clear this site&apos;s data in your browser.</p>
   </> },
   { id: "security", title: "Keeping it safe", body: <p>We use encrypted connections, hashed passwords, short-lived sign-in tokens and signed cookies, and we limit who can reach the data. No system is perfectly secure, but if a breach affects you, we will tell you as the law requires.</p> },
