@@ -115,9 +115,18 @@ export async function getPlan(): Promise<PublicPlan> {
   return call<PublicPlan>("/billing/plan");
 }
 
-/** Starts a payment; returns the payment gateway's page to send the browser to. */
-export async function startCheckout(phone?: string): Promise<string> {
-  return (await call<{ url: string }>("/billing/checkout", { method: "POST", body: JSON.stringify(phone ? { phone } : {}) })).url;
+/** Razorpay's checkout popup details, opened on our own page. */
+export type PopupCheckout = { provider: "razorpay"; keyId: string; orderId: string; amount: number; currency: string; name: string; description: string; prefill: { name: string; email: string } };
+/** Either a gateway page to send the browser to, or a popup to open here. */
+export type CheckoutStart = { url: string } | { paymentId: string; popup: PopupCheckout };
+
+export async function startCheckout(phone?: string): Promise<CheckoutStart> {
+  return call<CheckoutStart>("/billing/checkout", { method: "POST", body: JSON.stringify(phone ? { phone } : {}) });
+}
+
+/** Sends the popup's signed result to the API, which verifies it and unlocks Premium. */
+export async function confirmCheckout(paymentId: string, proof: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }): Promise<"paid" | "created" | "failed"> {
+  return (await call<{ status: "paid" | "created" | "failed" }>("/billing/checkout/confirm", { method: "POST", body: JSON.stringify({ paymentId, ...proof }) })).status;
 }
 
 export function formatPrice(amount: number, currency: string): string {

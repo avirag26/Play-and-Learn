@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Padlock } from "@/components/ui/padlock";
 import { isPremiumUser, PremiumChip, UserAvatar } from "@/components/ui/user-avatar";
-import { AuthError, formatPrice, googleSignInUrl, login, logout, register, resendSignUpCode, startCheckout, verifySignUp, type AuthProviders, type AuthUser, type CodeSent, type PublicPlan } from "@/lib/auth-client";
+import { AuthError, confirmCheckout, formatPrice, googleSignInUrl, login, logout, register, resendSignUpCode, startCheckout, verifySignUp, type AuthProviders, type AuthUser, type CodeSent, type PublicPlan } from "@/lib/auth-client";
 import { games } from "@/lib/games";
 import { hasAcceptedPrivacy, rememberPrivacyAccepted } from "@/lib/privacy";
+import { openRazorpayPopup } from "@/lib/razorpay-checkout";
 
 export type AccountState = { status: "loading" } | { status: "signed-out" } | { status: "signed-in"; user: AuthUser } | { status: "error"; message: string };
 export type AccountNotice = { tone: "success" | "error"; message: string };
@@ -29,6 +30,7 @@ function PremiumGames({ plan }: { plan: PublicPlan }) {
 function PremiumCard({ user, plan }: { user: AuthUser; plan: PublicPlan | null }) {
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
   const status = user.subscription.status;
   const until = user.subscription.currentPeriodEnd;
@@ -38,11 +40,19 @@ function PremiumCard({ user, plan }: { user: AuthUser; plan: PublicPlan | null }
     setBusy(true);
     setError("");
     try {
-      const url = await startCheckout(plan?.requiresPhone ? phone : undefined);
+      const checkout = await startCheckout(plan?.requiresPhone ? phone : undefined);
       try { window.sessionStorage.setItem(PARENT_RETURN_KEY, "account"); } catch { /* The adult check will simply be asked again. */ }
-      window.location.assign(url);
+      if ("url" in checkout) { window.location.assign(checkout.url); return; }
+      // Razorpay: pay in a popup here, then go straight to our own success page.
+      const result = await openRazorpayPopup(checkout.popup, setError);
+      if (result.outcome === "closed") { setBusy(false); return; }
+      setError("");
+      setConfirming(true);
+      const outcome = await confirmCheckout(checkout.paymentId, result.proof);
+      window.location.assign(outcome === "paid" ? "/premium/success" : `/grown-ups?payment=${outcome === "created" ? "pending" : "failed"}`);
     } catch (caught) {
-      setError(errorText(caught));
+      setError(caught instanceof AuthError ? caught.message : "The payment window couldn't open. Check your connection and try again.");
+      setConfirming(false);
       setBusy(false);
     }
   }
@@ -63,8 +73,8 @@ function PremiumCard({ user, plan }: { user: AuthUser; plan: PublicPlan | null }
       : plan ? <form onSubmit={buy} className="mt-5 grid gap-4">
         {plan.requiresPhone ? <label className="block text-sm font-black text-ink">Mobile number <span className="font-bold text-muted-ink">(needed by the payment provider)</span><input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} required placeholder="98765 43210" className={inputClass} /></label> : null}
         {error ? <p role="alert" className="rounded-2xl bg-coral/40 px-4 py-3 text-sm font-black text-ink">{error}</p> : null}
-        <Button type="submit" disabled={busy} className="w-full disabled:opacity-60">{busy ? "Opening secure payment…" : status === "active" ? `Add ${durationText(plan.durationDays)} · ${formatPrice(plan.amount, plan.currency)}` : `Get Premium · ${formatPrice(plan.amount, plan.currency)}`}</Button>
-        <p className="text-center text-xs leading-5 text-muted-ink">You&apos;ll pay on our payment partner&apos;s secure page, then come straight back here.</p>
+        <Button type="submit" disabled={busy} className="w-full disabled:opacity-60">{confirming ? "Confirming your payment…" : busy ? "Opening secure payment…" : status === "active" ? `Add ${durationText(plan.durationDays)} · ${formatPrice(plan.amount, plan.currency)}` : `Get Premium · ${formatPrice(plan.amount, plan.currency)}`}</Button>
+        <p className="text-center text-xs leading-5 text-muted-ink">You&apos;ll pay securely with our payment partner, then see Premium unlock straight away.</p>
       </form> : null}
   </Card>;
 }
