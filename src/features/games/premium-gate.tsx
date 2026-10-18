@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { Padlock } from "@/components/ui/padlock";
 import { isGameLocked, usePremium } from "@/lib/premium";
 
 /** Shows the game, or a friendly "ask a grown-up" screen when it needs Premium. */
@@ -13,7 +14,7 @@ export function PremiumGate({ gameId, title, children }: { gameId: string; title
 
   return <main className="game-screen grid place-items-center bg-world-blue px-4 py-8">
     <div className="w-full max-w-md rounded-[2rem] border-[3px] border-white/70 bg-cream p-7 text-center shadow-[0_8px_0_rgba(42,91,145,0.25)] sm:p-10">
-      <p aria-hidden="true" className="text-7xl">🔒</p>
+      <span className="padlock-locked-shake mx-auto block size-24"><Padlock locked className="size-full" /></span>
       <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-sunshine px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-ink"><span aria-hidden="true">⭐</span>Premium</p>
       <h1 className="mt-3 text-3xl font-black text-ink">{title} is a Premium game</h1>
       <p className="mt-3 leading-7 text-muted-ink">Ask a grown-up to unlock it in the parent area.</p>

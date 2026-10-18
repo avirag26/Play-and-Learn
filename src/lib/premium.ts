@@ -34,6 +34,17 @@ export function isGameLocked(entitlement: Entitlement | null, gameId: string, no
   return entitlement !== null && entitlement.premiumGameIds.includes(gameId) && !hasPremium(entitlement, now);
 }
 
+const REVEALED_KEY = "play-learn-unlock-revealed-v1";
+
+/** True the first time this device shows a given Premium period, so the locks can pop open once after buying. */
+export function isUnlockNew(premiumUntil: string): boolean {
+  try { return window.localStorage.getItem(REVEALED_KEY) !== premiumUntil; } catch { return false; }
+}
+
+export function markUnlockSeen(premiumUntil: string): void {
+  try { window.localStorage.setItem(REVEALED_KEY, premiumUntil); } catch { /* The locks will just pop open again next time. */ }
+}
+
 let pending: Promise<Entitlement | null> | null = null;
 const listeners = new Set<(entitlement: Entitlement | null) => void>();
 
