@@ -1,5 +1,6 @@
 ﻿import type { ReactNode } from "react";
 import { Suspense } from "react";
+import Link from "next/link";
 import { AppNavigation } from "@/components/layout/app-navigation";
 import { MobileHeader } from "@/components/layout/mobile-header";
 import { SettingsApplier } from "@/components/layout/settings-applier";
@@ -13,7 +14,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <MobileHeader />
     <OfflineStatus />
     <div id="app-content" className="app-content" tabIndex={-1}>{children}</div>
-    <footer className="app-footer"><PageContainer><p className="font-black text-ink">Little Wonder World</p><p className="mt-1">Made for curious minds, with a grown-up nearby.</p></PageContainer></footer>
+    <footer className="app-footer"><PageContainer><p className="font-black text-ink">Little Wonder World</p><p className="mt-1">Made for curious minds, with a grown-up nearby.</p><p className="mt-2"><Link href="/privacy" className="font-black text-ink underline underline-offset-4">Privacy Policy</Link></p></PageContainer></footer>
     <Suspense fallback={null}><AppNavigation placement="mobile" /></Suspense>
   </div>;
 }

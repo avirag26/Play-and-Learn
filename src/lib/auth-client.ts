@@ -1,7 +1,8 @@
 // Talks to the account API through the app's /api proxy. Session tokens live in httpOnly cookies,
 // so this code never sees them: it only learns who is signed in.
 
-export type SubscriptionStatus = "none" | "trialing" | "active" | "past_due" | "canceled";
+/** "expired": Premium was bought before and its period has ended. */
+export type SubscriptionStatus = "none" | "active" | "expired";
 export type AuthUser = {
   id: string;
   email: string;
@@ -9,6 +10,8 @@ export type AuthUser = {
   avatarUrl: string | null;
   emailVerified: boolean;
   providers: ("password" | "google")[];
+  role: "user" | "admin";
+  isAdmin: boolean;
   subscription: { status: SubscriptionStatus; plan: string | null; currentPeriodEnd: string | null };
   createdAt: string;
 };
@@ -103,4 +106,20 @@ export function googleErrorMessage(code: string): string {
     case "google_state": return "Google sign-in took too long or was interrupted. Please try again.";
     default: return "Google sign-in didn't work. Please try again.";
   }
+}
+
+/** The Premium plan, as set in the admin app. `amount` is in paise. */
+export type PublicPlan = { name: string; amount: number; currency: string; durationDays: number; premiumGameIds: string[]; available: boolean; requiresPhone: boolean };
+
+export async function getPlan(): Promise<PublicPlan> {
+  return call<PublicPlan>("/billing/plan");
+}
+
+/** Starts a payment; returns the payment gateway's page to send the browser to. */
+export async function startCheckout(phone?: string): Promise<string> {
+  return (await call<{ url: string }>("/billing/checkout", { method: "POST", body: JSON.stringify(phone ? { phone } : {}) })).url;
+}
+
+export function formatPrice(amount: number, currency: string): string {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency, minimumFractionDigits: amount % 100 ? 2 : 0 }).format(amount / 100);
 }
