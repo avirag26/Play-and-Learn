@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
-import Link from "next/link";
-import { Card } from "@/components/ui/card";
+import { PolicyPage, type PolicySection } from "@/components/layout/policy-page";
 import { PRIVACY_CONTACT_EMAIL, PRIVACY_CONTACT_NAME, PRIVACY_CONTACT_PHONE, PRIVACY_CONTACT_ROLE, PRIVACY_LAST_UPDATED, PRIVACY_OPERATOR } from "@/lib/privacy";
 
 export const metadata: Metadata = {
@@ -9,7 +7,7 @@ export const metadata: Metadata = {
   description: "What Play & Learn collects, why, and the choices parents have.",
 };
 
-const sections: readonly { id: string; title: string; body: ReactNode }[] = [
+const sections: readonly PolicySection[] = [
   { id: "summary", title: "The short version", body: <ul>
     <li>Children can play without an account. Their game progress stays <strong>on this device only</strong>.</li>
     <li>Only a <strong>grown-up</strong> can create an account, and only to buy and manage Premium.</li>
@@ -63,12 +61,12 @@ const sections: readonly { id: string; title: string; body: ReactNode }[] = [
     <p>We may also share information if the law requires it. We never sell your information or use it for advertising.</p>
   </> },
   { id: "retention", title: "How long we keep it", body: <ul>
-    <li>Account details: until you ask us to delete your account.</li>
-    <li>Payment records: for as long as tax and accounting laws require, even after an account is deleted.</li>
+    <li>Account details: until you delete your account (<strong>Parent dashboard → Account → Delete account</strong>) or ask us to. Deleting removes them straight away.</li>
+    <li>Payment records: for as long as tax and accounting laws require. When an account is deleted, they are unlinked so they no longer identify you.</li>
     <li>Unfinished sign-ups: unused sign-up codes expire within minutes.</li>
   </ul> },
   { id: "rights", title: "Your choices and rights", body: <>
-    <p>You can ask us to <strong>see, correct or delete</strong> your personal information, or withdraw your consent, at any time. Email us from the address on your account and we will reply within 30 days. This includes your rights under India&apos;s Digital Personal Data Protection Act, 2023 and similar laws where you live.</p>
+    <p>You can <strong>delete your account yourself</strong> at any time from <strong>Parent dashboard → Account → Delete account</strong>. You can also ask us to <strong>see, correct or delete</strong> your personal information, or withdraw your consent, at any time. Email us from the address on your account and we will reply within 30 days. This includes your rights under India&apos;s Digital Personal Data Protection Act, 2023 and similar laws where you live.</p>
     <p>To remove your child&apos;s progress, use <strong>Parent dashboard → Settings → Reset progress</strong>, or clear this site&apos;s data in your browser.</p>
   </> },
   { id: "security", title: "Keeping it safe", body: <p>We use encrypted connections, hashed passwords, short-lived sign-in tokens and signed cookies, and we limit who can reach the data. No system is perfectly secure, but if a breach affects you, we will tell you as the law requires.</p> },
@@ -84,17 +82,5 @@ const sections: readonly { id: string; title: string; body: ReactNode }[] = [
 ];
 
 export default function PrivacyPage() {
-  return <main className="min-h-[calc(100vh-4.5rem)] bg-cream pb-16 pt-8 sm:pt-12"><div className="page-container mx-auto max-w-3xl">
-    <Link href="/" className="text-sm font-black text-ink underline underline-offset-4">← Back home</Link>
-    <p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-muted-ink">For grown-ups</p>
-    <h1 className="mt-2 text-4xl font-black tracking-tight text-ink sm:text-5xl">Privacy Policy</h1>
-    <p className="mt-3 text-sm font-bold text-muted-ink">Last updated {PRIVACY_LAST_UPDATED}</p>
-
-    <nav aria-label="On this page" className="mt-6 flex flex-wrap gap-2">{sections.map((section) => <a key={section.id} href={`#${section.id}`} className="rounded-full bg-white px-3 py-1.5 text-sm font-black text-ink shadow-[0_2px_0_rgba(42,91,145,0.15)] hover:bg-sky">{section.title}</a>)}</nav>
-
-    <div className="mt-8 grid gap-6">{sections.map((section) => <Card key={section.id} id={section.id} className="scroll-mt-24 bg-white p-6 sm:p-8">
-      <h2 className="text-2xl font-black text-ink">{section.title}</h2>
-      <div className="privacy-prose mt-3 text-base leading-7 text-muted-ink">{section.body}</div>
-    </Card>)}</div>
-  </div></main>;
+  return <PolicyPage title="Privacy Policy" lastUpdated={PRIVACY_LAST_UPDATED} sections={sections} />;
 }

@@ -1,9 +1,9 @@
 export const ACTIVITY_STORAGE_KEY = "play-learn-activity-v1";
-export type GameId = "alphabet-adventure" | "animal-safari" | "color-quest";
+export type GameId = "alphabet-adventure" | "animal-safari" | "color-quest" | "count-the-stars";
 /** When each game last saved new progress, as epoch milliseconds. */
 export type LastPlayed = Partial<Record<GameId, number>>;
 
-const gameIds = new Set<string>(["alphabet-adventure", "animal-safari", "color-quest"]);
+const gameIds = new Set<string>(["alphabet-adventure", "animal-safari", "color-quest", "count-the-stars"]);
 
 export function parseLastPlayed(value: unknown): LastPlayed {
   if (!value || typeof value !== "object") return {};

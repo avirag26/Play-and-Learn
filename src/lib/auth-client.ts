@@ -92,6 +92,11 @@ export async function logout(): Promise<void> {
   await call<void>("/auth/logout", { method: "POST" });
 }
 
+/** Permanently deletes the signed-in account: the password confirms it, or the email for Google-only accounts. */
+export async function deleteAccount(proof: { password: string } | { email: string }): Promise<void> {
+  await call<void>("/account/delete", { method: "POST", body: JSON.stringify(proof) });
+}
+
 /** Full-page navigation to Google; the API sends the browser back to `returnTo` afterwards. */
 export function googleSignInUrl(returnTo: string): string {
   return `/api/auth/google?${new URLSearchParams({ returnTo })}`;
@@ -115,11 +120,23 @@ export async function getPlan(): Promise<PublicPlan> {
   return call<PublicPlan>("/billing/plan");
 }
 
-/** Starts a payment; returns the payment gateway's page to send the browser to. */
-export async function startCheckout(phone?: string): Promise<string> {
-  return (await call<{ url: string }>("/billing/checkout", { method: "POST", body: JSON.stringify(phone ? { phone } : {}) })).url;
+/** The payment gateway's checkout popup, opened on our own page. */
+type PopupExtras = { name: string; description: string; prefill: { name: string; email: string } };
+export type PopupCheckout = PopupExtras & ({ provider: "razorpay"; keyId: string; orderId: string; amount: number; currency: string } | { provider: "cashfree"; mode: "sandbox" | "production"; paymentSessionId: string; orderId: string });
+/** Either a gateway page to send the browser to, or a popup to open here. */
+export type CheckoutStart = { url: string } | { paymentId: string; popup: PopupCheckout };
+
+export async function startCheckout(phone?: string): Promise<CheckoutStart> {
+  return call<CheckoutStart>("/billing/checkout", { method: "POST", body: JSON.stringify(phone ? { phone } : {}) });
+}
+
+/** Asks the API to check a finished popup payment with the gateway (Razorpay also sends its signed result) and unlock Premium. */
+export async function confirmCheckout(paymentId: string, proof?: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }): Promise<"paid" | "created" | "failed"> {
+  return (await call<{ status: "paid" | "created" | "failed" }>("/billing/checkout/confirm", { method: "POST", body: JSON.stringify({ paymentId, ...proof }) })).status;
 }
 
 export function formatPrice(amount: number, currency: string): string {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency, minimumFractionDigits: amount % 100 ? 2 : 0 }).format(amount / 100);
 }
+
+export const durationText = (days: number) => days % 365 === 0 ? `${days / 365} year${days === 365 ? "" : "s"}` : days % 30 === 0 ? `${days / 30} month${days === 30 ? "" : "s"}` : `${days} days`;

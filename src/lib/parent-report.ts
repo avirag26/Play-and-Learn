@@ -7,6 +7,8 @@ import { MIN_SOUND_ANIMALS, soundAnimals } from "@/lib/animal-questions";
 import { colors, detectiveMissions } from "@/lib/color-data";
 import type { ColorMode, ColorProgress } from "@/lib/color-progress";
 import { pictures } from "@/lib/coloring-pictures";
+import { adventureChallenges, countingMissions, numbers } from "@/lib/count-data";
+import { emptyCountProgress, type CountMode, type CountProgress } from "@/lib/count-progress";
 import { games } from "@/lib/games";
 
 export type ProgressStatus = "not-started" | "in-progress" | "completed";
@@ -49,11 +51,12 @@ export type ParentReport = {
   lastPlayed: number | null;
 };
 
-export type ReportInput = { alphabet: AlphabetProgress; animal: AnimalProgress; color: ColorProgress; lastPlayed: LastPlayed };
+export type ReportInput = { alphabet: AlphabetProgress; animal: AnimalProgress; color: ColorProgress; count?: CountProgress; lastPlayed: LastPlayed };
 
 const alphabetModes: readonly { id: AlphabetMode; label: string }[] = [{ id: "discover", label: "Discover the Letters" }, { id: "find", label: "Find the Letter" }, { id: "match", label: "Match the Letter" }];
 const animalModes: readonly { id: AnimalMode; label: string }[] = [{ id: "meet", label: "Meet the Animals" }, { id: "sound", label: "Guess That Sound" }, { id: "find", label: "Find the Animal" }];
 const colorModeLabels: readonly { id: ColorMode; label: string }[] = [{ id: "meet", label: "Meet the Colors" }, { id: "find", label: "Find the Color" }, { id: "paint", label: "Color the World" }, { id: "detective", label: "Color Detective" }];
+const countModeLabels: readonly { id: CountMode; label: string }[] = [{ id: "meet", label: "Meet the Numbers" }, { id: "count", label: "Count and Tap" }, { id: "match", label: "Match the Number" }, { id: "adventure", label: "Number Adventure" }];
 
 /** Below this score, after enough questions, the next step suggests practising together. */
 const PRACTICE_ACCURACY = 0.6;
@@ -130,8 +133,26 @@ export function colorReport(progress: ColorProgress, lastPlayed: LastPlayed = {}
   }, lastPlayed);
 }
 
+export function countReport(progress: CountProgress, lastPlayed: LastPlayed = {}): GameReport {
+  const activities = activityReports(countModeLabels, progress.completed, progress.started);
+  const left = numbers.filter((value) => !progress.met.includes(value)).map(String);
+  const challenges = adventureChallenges.filter((challenge) => progress.challenges.includes(challenge.id)).length;
+  return buildGame("count-the-stars", {
+    activities,
+    milestones: [
+      activitiesMilestone(activities),
+      { label: "Numbers met", done: numbers.length - left.length, total: numbers.length, hint: `Open Meet the Numbers to meet the ${left.length} numbers left.` },
+      { label: "Adventure challenges", done: challenges, total: adventureChallenges.length, hint: `Finish ${adventureChallenges.length - challenges} more challenges in Number Adventure.` },
+    ],
+    attempted: progress.attempted, correct: progress.correct,
+    stillToMeet: { label: "Numbers still to meet", items: left },
+    practice: "Count real things together, touching each one, then try Count and Tap again.",
+    anyActivity: progress.started.length > 0 || progress.missions.some((id) => countingMissions.some((mission) => mission.id === id)),
+  }, lastPlayed);
+}
+
 export function buildParentReport(input: ReportInput): ParentReport {
-  const reports = [alphabetReport(input.alphabet, input.lastPlayed), animalReport(input.animal, input.lastPlayed), colorReport(input.color, input.lastPlayed)];
+  const reports = [alphabetReport(input.alphabet, input.lastPlayed), animalReport(input.animal, input.lastPlayed), colorReport(input.color, input.lastPlayed), countReport(input.count ?? emptyCountProgress, input.lastPlayed)];
   const sum = (pick: (report: GameReport) => number) => reports.reduce((total, report) => total + pick(report), 0);
   const attempted = sum((report) => report.attempted);
   const correct = sum((report) => report.correct);

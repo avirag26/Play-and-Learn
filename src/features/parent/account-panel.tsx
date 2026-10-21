@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Padlock } from "@/components/ui/padlock";
 import { isPremiumUser, PremiumChip, UserAvatar } from "@/components/ui/user-avatar";
-import { AuthError, formatPrice, googleSignInUrl, login, logout, register, resendSignUpCode, startCheckout, verifySignUp, type AuthProviders, type AuthUser, type CodeSent, type PublicPlan } from "@/lib/auth-client";
+import { AuthError, confirmCheckout, deleteAccount, durationText, formatPrice, googleSignInUrl, login, logout, register, resendSignUpCode, startCheckout, verifySignUp, type AuthProviders, type AuthUser, type CodeSent, type PublicPlan } from "@/lib/auth-client";
 import { games } from "@/lib/games";
 import { hasAcceptedPrivacy, rememberPrivacyAccepted } from "@/lib/privacy";
+import { openPaymentPopup } from "@/lib/payment-popup";
 
 export type AccountState = { status: "loading" } | { status: "signed-out" } | { status: "signed-in"; user: AuthUser } | { status: "error"; message: string };
 export type AccountNotice = { tone: "success" | "error"; message: string };
@@ -17,7 +18,6 @@ export type AccountNotice = { tone: "success" | "error"; message: string };
 export const PARENT_RETURN_KEY = "play-learn-parent-return";
 
 const longDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
-const durationText = (days: number) => days % 365 === 0 ? `${days / 365} year${days === 365 ? "" : "s"}` : days % 30 === 0 ? `${days / 30} month${days === 30 ? "" : "s"}` : `${days} days`;
 
 function PremiumGames({ plan }: { plan: PublicPlan }) {
   const premium = games.filter((game) => plan.premiumGameIds.includes(game.id));
@@ -29,6 +29,7 @@ function PremiumGames({ plan }: { plan: PublicPlan }) {
 function PremiumCard({ user, plan }: { user: AuthUser; plan: PublicPlan | null }) {
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
   const status = user.subscription.status;
   const until = user.subscription.currentPeriodEnd;
@@ -38,11 +39,31 @@ function PremiumCard({ user, plan }: { user: AuthUser; plan: PublicPlan | null }
     setBusy(true);
     setError("");
     try {
-      const url = await startCheckout(plan?.requiresPhone ? phone : undefined);
+      const checkout = await startCheckout(plan?.requiresPhone ? phone : undefined);
       try { window.sessionStorage.setItem(PARENT_RETURN_KEY, "account"); } catch { /* The adult check will simply be asked again. */ }
-      window.location.assign(url);
+      if ("url" in checkout) { window.location.assign(checkout.url); return; }
+      // Popup gateways: pay right here, then go straight to our own success page.
+      const result = await openPaymentPopup(checkout.popup, setError);
+      if (result.outcome === "redirecting") return;
+      if (result.outcome === "closed") { if (result.message) setError(result.message); setBusy(false); return; }
+      setError("");
+      setConfirming(true);
+      const outcome = await confirmCheckout(checkout.paymentId, result.proof);
+      // Full page loads on purpose: the destination reads its ?payment= result and fresh Premium state when it loads.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      if (outcome === "paid") { window.location.assign("/premium/success"); return; }
+      // Razorpay only reports signed (successful) payments; Cashfree also reports failed ones, which leave the order open.
+      if (checkout.popup.provider === "cashfree" && outcome === "created") {
+        setError("The payment didn't go through, so nothing was added. If money left your account, Premium unlocks by itself within a few minutes.");
+        setConfirming(false);
+        setBusy(false);
+        return;
+      }
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign(`/grown-ups?payment=${outcome === "created" ? "pending" : "failed"}`);
     } catch (caught) {
-      setError(errorText(caught));
+      setError(caught instanceof AuthError ? caught.message : "The payment window couldn't open. Check your connection and try again.");
+      setConfirming(false);
       setBusy(false);
     }
   }
@@ -63,8 +84,8 @@ function PremiumCard({ user, plan }: { user: AuthUser; plan: PublicPlan | null }
       : plan ? <form onSubmit={buy} className="mt-5 grid gap-4">
         {plan.requiresPhone ? <label className="block text-sm font-black text-ink">Mobile number <span className="font-bold text-muted-ink">(needed by the payment provider)</span><input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} required placeholder="98765 43210" className={inputClass} /></label> : null}
         {error ? <p role="alert" className="rounded-2xl bg-coral/40 px-4 py-3 text-sm font-black text-ink">{error}</p> : null}
-        <Button type="submit" disabled={busy} className="w-full disabled:opacity-60">{busy ? "Opening secure payment…" : status === "active" ? `Add ${durationText(plan.durationDays)} · ${formatPrice(plan.amount, plan.currency)}` : `Get Premium · ${formatPrice(plan.amount, plan.currency)}`}</Button>
-        <p className="text-center text-xs leading-5 text-muted-ink">You&apos;ll pay on our payment partner&apos;s secure page, then come straight back here.</p>
+        <Button type="submit" disabled={busy} className="w-full disabled:opacity-60">{confirming ? "Confirming your payment…" : busy ? "Opening secure payment…" : status === "active" ? `Add ${durationText(plan.durationDays)} · ${formatPrice(plan.amount, plan.currency)}` : `Get Premium · ${formatPrice(plan.amount, plan.currency)}`}</Button>
+        <p className="text-center text-xs leading-5 text-muted-ink">You&apos;ll pay securely with our payment partner, then see Premium unlock straight away. By paying you agree to our <a href="/terms" target="_blank" rel="noopener" className="font-black underline underline-offset-2">Terms</a> and <a href="/refund-policy" target="_blank" rel="noopener" className="font-black underline underline-offset-2">Cancellation &amp; Refund Policy</a>.</p>
       </form> : null}
   </Card>;
 }
@@ -220,7 +241,58 @@ function SignInForm({ providers, onSignedIn }: { providers: AuthProviders | null
   </Card>;
 }
 
-function SignedIn({ user, plan, onSignedOut }: { user: AuthUser; plan: PublicPlan | null; onSignedOut: () => void }) {
+/** Permanent deletion, behind a clear warning and a password (or, for Google accounts, typing the email). */
+function DeleteAccountCard({ user, onDeleted }: { user: AuthUser; onDeleted: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [secret, setSecret] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const usesPassword = user.providers.includes("password");
+  const ready = usesPassword ? secret.length > 0 : secret.trim().toLowerCase() === user.email;
+
+  async function confirm(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await deleteAccount(usesPassword ? { password: secret } : { email: secret });
+      onDeleted();
+    } catch (caught) {
+      setError(errorText(caught));
+      setBusy(false);
+    }
+  }
+
+  function cancel() { setOpen(false); setSecret(""); setError(""); }
+
+  return <Card className="border-coral/50 bg-white p-6 sm:p-8">
+    <h2 className="text-xl font-black text-ink">Delete account</h2>
+    <p className="mt-2 text-sm leading-6 text-muted-ink">Permanently remove your parent account and the personal information we hold about you.</p>
+    {!open ? <Button variant="secondary" onClick={() => setOpen(true)} className="mt-5">Delete my account…</Button>
+    : <form onSubmit={confirm} className="mt-5 grid gap-4">
+      <div className="rounded-2xl bg-coral/25 p-4 text-sm leading-6 text-ink">
+        <p className="font-black">This can&apos;t be undone. Deleting your account will:</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          <li>Remove your name, email, password, and sign-in details from our systems.</li>
+          <li>Sign you out on every device.</li>
+          {isPremiumUser(user) ? <li><span className="font-black">End your Premium straight away</span>, with no refund for the time left.</li> : null}
+          <li>Keep your child&apos;s game progress on this device. It was never stored with us.</li>
+        </ul>
+        <p className="mt-2 text-xs text-muted-ink">Payment records are kept for tax and accounting, with nothing linking them to you. See our <a href="/privacy#retention" target="_blank" rel="noopener" className="font-black underline underline-offset-2">Privacy Policy</a>.</p>
+      </div>
+      <label className="block text-sm font-black text-ink">{usesPassword ? "Enter your password to confirm" : <>Type <span className="break-all">{user.email}</span> to confirm</>}
+        <input type={usesPassword ? "password" : "email"} value={secret} onChange={(event) => setSecret(event.target.value)} autoComplete={usesPassword ? "current-password" : "off"} required maxLength={usesPassword ? 128 : 254} className={inputClass.replace("border-sky", "border-coral/60")} />
+      </label>
+      {error ? <p role="alert" className="rounded-2xl bg-coral/40 px-4 py-3 text-sm font-black text-ink">{error}</p> : null}
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button type="button" onClick={cancel} disabled={busy} className="min-h-12 rounded-full px-5 text-sm font-black text-ink hover:bg-cream focus-visible:outline-3 focus-visible:outline-ink">Keep my account</button>
+        <button type="submit" disabled={busy || !ready} className="min-h-12 rounded-full border-2 border-[#b4442f] bg-[#d9573f] px-6 text-sm font-black text-white shadow-[0_4px_0_#9c3a28] transition hover:-translate-y-0.5 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-ink disabled:translate-y-0 disabled:opacity-50">{busy ? "Deleting…" : "Permanently delete my account"}</button>
+      </div>
+    </form>}
+  </Card>;
+}
+
+function SignedIn({ user, plan, onSignedOut }: { user: AuthUser; plan: PublicPlan | null; onSignedOut: (message?: string) => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -243,10 +315,11 @@ function SignedIn({ user, plan, onSignedOut }: { user: AuthUser; plan: PublicPla
       <Button variant="secondary" onClick={signOut} disabled={busy} className="mt-5 disabled:opacity-60">{busy ? "Signing out…" : "Sign out"}</Button>
     </Card>
     <PremiumCard user={user} plan={plan} />
+    <DeleteAccountCard user={user} onDeleted={() => { window.scrollTo({ top: 0 }); onSignedOut("Your account has been deleted, along with its personal information. A confirmation email is on its way."); }} />
   </div>;
 }
 
-export function AccountPanel({ account, providers, plan, notice, onSignedIn, onSignedOut, onRetry }: { account: AccountState; providers: AuthProviders | null; plan: PublicPlan | null; notice: AccountNotice | null; onSignedIn: (user: AuthUser) => void; onSignedOut: () => void; onRetry: () => void }) {
+export function AccountPanel({ account, providers, plan, notice, onSignedIn, onSignedOut, onRetry }: { account: AccountState; providers: AuthProviders | null; plan: PublicPlan | null; notice: AccountNotice | null; onSignedIn: (user: AuthUser) => void; onSignedOut: (message?: string) => void; onRetry: () => void }) {
   return <div className="grid gap-6">
     {notice ? <Notice notice={notice} /> : null}
     {account.status === "loading" ? <Card className="bg-white p-6 sm:p-8"><p className="text-sm font-black text-ink">Checking your account…</p></Card>
