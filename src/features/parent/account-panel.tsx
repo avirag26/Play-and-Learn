@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Padlock } from "@/components/ui/padlock";
 import { isPremiumUser, PremiumChip, UserAvatar } from "@/components/ui/user-avatar";
-import { AuthError, confirmCheckout, deleteAccount, formatPrice, googleSignInUrl, login, logout, register, resendSignUpCode, startCheckout, verifySignUp, type AuthProviders, type AuthUser, type CodeSent, type PublicPlan } from "@/lib/auth-client";
+import { AuthError, confirmCheckout, deleteAccount, durationText, formatPrice, googleSignInUrl, login, logout, register, resendSignUpCode, startCheckout, verifySignUp, type AuthProviders, type AuthUser, type CodeSent, type PublicPlan } from "@/lib/auth-client";
 import { games } from "@/lib/games";
 import { hasAcceptedPrivacy, rememberPrivacyAccepted } from "@/lib/privacy";
-import { openRazorpayPopup } from "@/lib/razorpay-checkout";
+import { openPaymentPopup } from "@/lib/payment-popup";
 
 export type AccountState = { status: "loading" } | { status: "signed-out" } | { status: "signed-in"; user: AuthUser } | { status: "error"; message: string };
 export type AccountNotice = { tone: "success" | "error"; message: string };
@@ -18,7 +18,6 @@ export type AccountNotice = { tone: "success" | "error"; message: string };
 export const PARENT_RETURN_KEY = "play-learn-parent-return";
 
 const longDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
-const durationText = (days: number) => days % 365 === 0 ? `${days / 365} year${days === 365 ? "" : "s"}` : days % 30 === 0 ? `${days / 30} month${days === 30 ? "" : "s"}` : `${days} days`;
 
 function PremiumGames({ plan }: { plan: PublicPlan }) {
   const premium = games.filter((game) => plan.premiumGameIds.includes(game.id));
@@ -43,13 +42,25 @@ function PremiumCard({ user, plan }: { user: AuthUser; plan: PublicPlan | null }
       const checkout = await startCheckout(plan?.requiresPhone ? phone : undefined);
       try { window.sessionStorage.setItem(PARENT_RETURN_KEY, "account"); } catch { /* The adult check will simply be asked again. */ }
       if ("url" in checkout) { window.location.assign(checkout.url); return; }
-      // Razorpay: pay in a popup here, then go straight to our own success page.
-      const result = await openRazorpayPopup(checkout.popup, setError);
-      if (result.outcome === "closed") { setBusy(false); return; }
+      // Popup gateways: pay right here, then go straight to our own success page.
+      const result = await openPaymentPopup(checkout.popup, setError);
+      if (result.outcome === "redirecting") return;
+      if (result.outcome === "closed") { if (result.message) setError(result.message); setBusy(false); return; }
       setError("");
       setConfirming(true);
       const outcome = await confirmCheckout(checkout.paymentId, result.proof);
-      window.location.assign(outcome === "paid" ? "/premium/success" : `/grown-ups?payment=${outcome === "created" ? "pending" : "failed"}`);
+      // Full page loads on purpose: the destination reads its ?payment= result and fresh Premium state when it loads.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      if (outcome === "paid") { window.location.assign("/premium/success"); return; }
+      // Razorpay only reports signed (successful) payments; Cashfree also reports failed ones, which leave the order open.
+      if (checkout.popup.provider === "cashfree" && outcome === "created") {
+        setError("The payment didn't go through, so nothing was added. If money left your account, Premium unlocks by itself within a few minutes.");
+        setConfirming(false);
+        setBusy(false);
+        return;
+      }
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign(`/grown-ups?payment=${outcome === "created" ? "pending" : "failed"}`);
     } catch (caught) {
       setError(caught instanceof AuthError ? caught.message : "The payment window couldn't open. Check your connection and try again.");
       setConfirming(false);
@@ -74,7 +85,7 @@ function PremiumCard({ user, plan }: { user: AuthUser; plan: PublicPlan | null }
         {plan.requiresPhone ? <label className="block text-sm font-black text-ink">Mobile number <span className="font-bold text-muted-ink">(needed by the payment provider)</span><input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} required placeholder="98765 43210" className={inputClass} /></label> : null}
         {error ? <p role="alert" className="rounded-2xl bg-coral/40 px-4 py-3 text-sm font-black text-ink">{error}</p> : null}
         <Button type="submit" disabled={busy} className="w-full disabled:opacity-60">{confirming ? "Confirming your payment…" : busy ? "Opening secure payment…" : status === "active" ? `Add ${durationText(plan.durationDays)} · ${formatPrice(plan.amount, plan.currency)}` : `Get Premium · ${formatPrice(plan.amount, plan.currency)}`}</Button>
-        <p className="text-center text-xs leading-5 text-muted-ink">You&apos;ll pay securely with our payment partner, then see Premium unlock straight away.</p>
+        <p className="text-center text-xs leading-5 text-muted-ink">You&apos;ll pay securely with our payment partner, then see Premium unlock straight away. By paying you agree to our <a href="/terms" target="_blank" rel="noopener" className="font-black underline underline-offset-2">Terms</a> and <a href="/refund-policy" target="_blank" rel="noopener" className="font-black underline underline-offset-2">Cancellation &amp; Refund Policy</a>.</p>
       </form> : null}
   </Card>;
 }

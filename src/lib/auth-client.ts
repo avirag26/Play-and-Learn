@@ -120,8 +120,9 @@ export async function getPlan(): Promise<PublicPlan> {
   return call<PublicPlan>("/billing/plan");
 }
 
-/** Razorpay's checkout popup details, opened on our own page. */
-export type PopupCheckout = { provider: "razorpay"; keyId: string; orderId: string; amount: number; currency: string; name: string; description: string; prefill: { name: string; email: string } };
+/** The payment gateway's checkout popup, opened on our own page. */
+type PopupExtras = { name: string; description: string; prefill: { name: string; email: string } };
+export type PopupCheckout = PopupExtras & ({ provider: "razorpay"; keyId: string; orderId: string; amount: number; currency: string } | { provider: "cashfree"; mode: "sandbox" | "production"; paymentSessionId: string; orderId: string });
 /** Either a gateway page to send the browser to, or a popup to open here. */
 export type CheckoutStart = { url: string } | { paymentId: string; popup: PopupCheckout };
 
@@ -129,11 +130,13 @@ export async function startCheckout(phone?: string): Promise<CheckoutStart> {
   return call<CheckoutStart>("/billing/checkout", { method: "POST", body: JSON.stringify(phone ? { phone } : {}) });
 }
 
-/** Sends the popup's signed result to the API, which verifies it and unlocks Premium. */
-export async function confirmCheckout(paymentId: string, proof: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }): Promise<"paid" | "created" | "failed"> {
+/** Asks the API to check a finished popup payment with the gateway (Razorpay also sends its signed result) and unlock Premium. */
+export async function confirmCheckout(paymentId: string, proof?: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }): Promise<"paid" | "created" | "failed"> {
   return (await call<{ status: "paid" | "created" | "failed" }>("/billing/checkout/confirm", { method: "POST", body: JSON.stringify({ paymentId, ...proof }) })).status;
 }
 
 export function formatPrice(amount: number, currency: string): string {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency, minimumFractionDigits: amount % 100 ? 2 : 0 }).format(amount / 100);
 }
+
+export const durationText = (days: number) => days % 365 === 0 ? `${days / 365} year${days === 365 ? "" : "s"}` : days % 30 === 0 ? `${days / 30} month${days === 30 ? "" : "s"}` : `${days} days`;
