@@ -1,0 +1,13 @@
+{
+  "name": "play-and-learn-voice",
+  "private": true,
+  "description": "Records the games' spoken lines with the free Kokoro voice model. Run on a computer; the app only ships the MP3s.",
+  "type": "module",
+  "scripts": {
+    "generate": "node generate.mjs"
+  },
+  "dependencies": {
+    "@breezystack/lamejs": "1.2.7",
+    "kokoro-js": "1.2.1"
+  }
+}

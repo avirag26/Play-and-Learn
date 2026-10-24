@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${backendUrl}/api/:path*` }];
   },
+  // Recorded voice clips (scripts/voice) rarely change: browsers keep them for a week instead of re-asking every time.
+  async headers() {
+    return [{ source: "/voice/:path*", headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }] }];
+  },
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,

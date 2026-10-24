@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# voice generator (scripts/voice); only its MP3 output is committed
+/scripts/voice/node_modules

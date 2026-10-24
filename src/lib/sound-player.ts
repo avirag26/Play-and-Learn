@@ -5,6 +5,8 @@ import { stopSpeech, type AudioErrorHandler } from "@/lib/speech";
 // during a tap, so the element is "unlocked" with a silent clip on the first touch anywhere.
 let player: HTMLAudioElement | null = null;
 let playId = 0;
+/** What the shared element is playing, so stopping speech never cuts off an animal sound. */
+let playing: "sound" | "voice" | null = null;
 
 function getPlayer(): HTMLAudioElement | null {
   if (typeof window === "undefined" || typeof window.Audio !== "function") return null;
@@ -50,6 +52,8 @@ export function playSound(src: string, onError?: AudioErrorHandler): "playing" |
     onError?.(reason);
   };
   try {
+    playing = "sound";
+    audio.onended = () => { if (id === playId) playing = null; };
     audio.onerror = () => fail(`media-error-${audio.error?.code ?? "unknown"}`);
     audio.src = src;
     audio.play()?.catch((error: { name?: string } | undefined) => fail(error?.name ?? "play-failed"));
@@ -57,7 +61,42 @@ export function playSound(src: string, onError?: AudioErrorHandler): "playing" |
   } catch { return "unavailable"; }
 }
 
+/**
+ * Plays recorded speech clips one after another on the shared element (speech that starts last wins,
+ * so any sound stops). `onFail` gets the reason and how many clips had started, so the caller can
+ * read the rest another way.
+ */
+export function playVoiceClips(srcs: readonly string[], onFail: (reason: string, started: number) => void): "playing" | "unsupported" {
+  const audio = getPlayer();
+  if (!audio || !srcs.length) return "unsupported";
+  stopSound();
+  const id = ++playId;
+  let next = 0;
+  const fail = (reason: string) => {
+    if (id !== playId || reason === "AbortError") return;
+    playing = null;
+    onFail(reason, next);
+  };
+  const playNext = () => {
+    if (id !== playId) return;
+    if (next >= srcs.length) { playing = null; return; }
+    audio.src = srcs[next++];
+    audio.play()?.catch((error: { name?: string } | undefined) => fail(error?.name ?? "play-failed"));
+  };
+  playing = "voice";
+  audio.onended = playNext;
+  audio.onerror = () => fail(`media-error-${audio.error?.code ?? "unknown"}`);
+  try { playNext(); } catch { fail("play-failed"); }
+  return "playing";
+}
+
+/** Stops recorded speech, leaving an animal sound playing. */
+export function stopVoiceClips(): void {
+  if (playing === "voice") stopSound();
+}
+
 export function stopSound(): void {
   playId++;
+  playing = null;
   player?.pause();
 }

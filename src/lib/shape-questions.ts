@@ -29,7 +29,7 @@ function spread<T>(pool: readonly T[], length: number, key: (item: T) => string,
 export type MatchQuestion = { id: string; target: ShapeChoice; prompt: string };
 export const MATCH_SESSION_LENGTH = 8;
 
-const matchPrompts: readonly ((name: string) => string)[] = [
+export const matchPrompts: readonly ((name: string) => string)[] = [
   (name) => `Can you find another ${name}?`,
   (name) => `Which one is a ${name} too?`,
   (name) => `Find the matching ${name}!`,
