@@ -39,6 +39,7 @@ const emptyColor = { started: [], completed: [], discovered: [], attempted: 0, c
 const fullAlphabet = { discovered: alphabet.map((entry) => entry.upper), attempted: 10, correct: 9, completed: ["discover", "find", "match"] };
 const fullAnimal = { discovered: animals.map((animal) => animal.id), attempted: 8, correct: 8, completed: ["meet", "sound", "find"] };
 const fullCount = { started: ["meet", "count", "match", "adventure"], completed: ["meet", "count", "match", "adventure"], met: [...numbers], attempted: 6, correct: 5, challenges: adventureChallenges.map((challenge) => challenge.id), missions: [], level: 2, recent: [] };
+const fullShape = { started: ["meet", "match", "safari"], completed: ["meet", "match", "safari"], met: ["circle", "square", "triangle"], spotted: [], attempted: 8, correct: 7, tries: 9 };
 const fullColor = { started: ["meet", "find", "paint", "detective"], completed: ["meet", "find", "paint", "detective"], discovered: colors.map((color) => color.id), attempted: 4, correct: 3, colored: pictures.map((picture) => picture.id), missions: detectiveMissions.map((mission) => mission.id) };
 
 test("a brand-new child shows every game as not started", () => {
@@ -57,13 +58,13 @@ test("a brand-new child shows every game as not started", () => {
 });
 
 test("finishing everything marks each game and the overview as completed", () => {
-  const result = report.buildParentReport({ alphabet: fullAlphabet, animal: fullAnimal, color: fullColor, count: fullCount, lastPlayed: { "animal-safari": 2000, "color-quest": 5000 } });
+  const result = report.buildParentReport({ alphabet: fullAlphabet, animal: fullAnimal, color: fullColor, count: fullCount, shape: fullShape, lastPlayed: { "animal-safari": 2000, "color-quest": 5000 } });
   assert.equal(result.status, "completed");
   assert.equal(result.percent, 100);
-  assert.equal(result.gamesCompleted, 4);
+  assert.equal(result.gamesCompleted, 5);
   assert.equal(result.activitiesDone, result.activitiesTotal);
-  assert.equal(result.attempted, 28);
-  assert.equal(result.correct, 25);
+  assert.equal(result.attempted, 36);
+  assert.equal(result.correct, 32);
   assert.equal(result.lastPlayed, 5000);
   for (const game of result.games) {
     assert.equal(game.status, "completed", game.id);

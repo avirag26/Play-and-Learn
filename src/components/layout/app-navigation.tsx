@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 const destinations = [
   { label: "Home", href: "/", icon: "home", prefixes: [] },
-  { label: "Games", href: "/games", icon: "games", prefixes: ["/alphabet-adventure", "/animal-safari", "/color-quest", "/count-the-stars", "/games"] },
+  { label: "Games", href: "/games", icon: "games", prefixes: ["/alphabet-adventure", "/animal-safari", "/color-quest", "/count-the-stars", "/shape-safari", "/games"] },
   { label: "Missions", href: "/missions", icon: "missions", prefixes: ["/missions"] },
   { label: "Parent", href: "/grown-ups", icon: "parent", prefixes: ["/grown-ups"] },
 ] as const;

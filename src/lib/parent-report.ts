@@ -10,6 +10,8 @@ import { pictures } from "@/lib/coloring-pictures";
 import { adventureChallenges, countingMissions, numbers } from "@/lib/count-data";
 import { emptyCountProgress, type CountMode, type CountProgress } from "@/lib/count-progress";
 import { games } from "@/lib/games";
+import { getShape, meetShapeIds } from "@/lib/shape-data";
+import { emptyShapeProgress, type ShapeLevel, type ShapeProgress } from "@/lib/shape-progress";
 
 export type ProgressStatus = "not-started" | "in-progress" | "completed";
 export type ActivityReport = { label: string; status: ProgressStatus };
@@ -51,12 +53,13 @@ export type ParentReport = {
   lastPlayed: number | null;
 };
 
-export type ReportInput = { alphabet: AlphabetProgress; animal: AnimalProgress; color: ColorProgress; count?: CountProgress; lastPlayed: LastPlayed };
+export type ReportInput = { alphabet: AlphabetProgress; animal: AnimalProgress; color: ColorProgress; count?: CountProgress; shape?: ShapeProgress; lastPlayed: LastPlayed };
 
 const alphabetModes: readonly { id: AlphabetMode; label: string }[] = [{ id: "discover", label: "Discover the Letters" }, { id: "find", label: "Find the Letter" }, { id: "match", label: "Match the Letter" }];
 const animalModes: readonly { id: AnimalMode; label: string }[] = [{ id: "meet", label: "Meet the Animals" }, { id: "sound", label: "Guess That Sound" }, { id: "find", label: "Find the Animal" }];
 const colorModeLabels: readonly { id: ColorMode; label: string }[] = [{ id: "meet", label: "Meet the Colors" }, { id: "find", label: "Find the Color" }, { id: "paint", label: "Color the World" }, { id: "detective", label: "Color Detective" }];
 const countModeLabels: readonly { id: CountMode; label: string }[] = [{ id: "meet", label: "Meet the Numbers" }, { id: "count", label: "Count and Tap" }, { id: "match", label: "Match the Number" }, { id: "adventure", label: "Number Adventure" }];
+const shapeLevelLabels: readonly { id: ShapeLevel; label: string }[] = [{ id: "meet", label: "Meet the Shapes" }, { id: "match", label: "Match the Shapes" }, { id: "safari", label: "Shape Safari" }];
 
 /** Below this score, after enough questions, the next step suggests practising together. */
 const PRACTICE_ACCURACY = 0.6;
@@ -151,8 +154,22 @@ export function countReport(progress: CountProgress, lastPlayed: LastPlayed = {}
   }, lastPlayed);
 }
 
+export function shapeReport(progress: ShapeProgress, lastPlayed: LastPlayed = {}): GameReport {
+  const activities = activityReports(shapeLevelLabels, progress.completed, progress.started);
+  const left = meetShapeIds.filter((id) => !progress.met.includes(id)).map((id) => getShape(id).name);
+  return buildGame("shape-safari", {
+    // Each finished level is one of the stars the child sees in the game.
+    activities,
+    milestones: [activitiesMilestone(activities), { label: "Shapes met", done: meetShapeIds.length - left.length, total: meetShapeIds.length, hint: `Open Meet the Shapes to meet the ${left.length} shapes left.` }],
+    attempted: progress.attempted, correct: progress.correct,
+    stillToMeet: { label: "Shapes still to meet", items: left },
+    practice: "Spot circles, squares and triangles around the home together, then try Match the Shapes again.",
+    anyActivity: progress.started.length > 0,
+  }, lastPlayed);
+}
+
 export function buildParentReport(input: ReportInput): ParentReport {
-  const reports = [alphabetReport(input.alphabet, input.lastPlayed), animalReport(input.animal, input.lastPlayed), colorReport(input.color, input.lastPlayed), countReport(input.count ?? emptyCountProgress, input.lastPlayed)];
+  const reports = [alphabetReport(input.alphabet, input.lastPlayed), animalReport(input.animal, input.lastPlayed), colorReport(input.color, input.lastPlayed), countReport(input.count ?? emptyCountProgress, input.lastPlayed), shapeReport(input.shape ?? emptyShapeProgress, input.lastPlayed)];
   const sum = (pick: (report: GameReport) => number) => reports.reduce((total, report) => total + pick(report), 0);
   const attempted = sum((report) => report.attempted);
   const correct = sum((report) => report.correct);

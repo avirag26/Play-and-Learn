@@ -17,7 +17,7 @@ export function GameGrid({ showModes = false }: { showModes?: boolean }) {
   const premiumUntil = entitlement && hasPremium(entitlement, now) ? entitlement.premiumUntil : null;
   const celebrate = useMemo(() => premiumUntil !== null && isUnlockNew(premiumUntil), [premiumUntil]);
   useEffect(() => { if (celebrate && premiumUntil) markUnlockSeen(premiumUntil); }, [celebrate, premiumUntil]);
-  return <ul className="grid min-h-0 flex-1 auto-rows-fr grid-cols-1 gap-3 sm:gap-5 md:flex-none md:grid-cols-2 lg:grid-cols-4">
+  return <ul className="grid min-h-0 flex-1 auto-rows-fr grid-cols-1 gap-3 sm:gap-5 md:flex-none md:grid-cols-2 lg:grid-cols-3">
     {games.map((game, position) => (
       <li key={game.id} className="min-w-0">
         <Link href={game.href} aria-label={`Play ${game.title}${isGameLocked(entitlement, game.id, now) ? " (Premium, locked)" : entitlement?.premiumGameIds.includes(game.id) ? " (Premium)" : ""}`} className="flex h-full items-center gap-3 rounded-3xl border-2 border-white bg-white p-3 text-left shadow-[0_6px_0_rgba(42,91,145,0.22)] transition-transform hover:-translate-y-1 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-ink sm:gap-4 sm:p-5 md:flex-col md:justify-center md:gap-3 md:p-6 md:text-center">

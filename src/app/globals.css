@@ -54,6 +54,13 @@ button, a { -webkit-tap-highlight-color:transparent; }
 .game-celebrate { animation:game-celebrate .35s ease-out; }
 @keyframes game-pop { from { opacity:0; transform:scale(.92); } }
 .game-pop { animation:game-pop .25s ease-out; }
+/* Shape Safari: a shape arrives with a gentle bounce, wiggles when tapped, and the welcome shapes bob. */
+@keyframes shape-reveal { 0% { opacity:0; transform:scale(.6) rotate(-6deg); } 60% { opacity:1; transform:scale(1.06) rotate(2deg); } 100% { transform:none; } }
+.shape-reveal { animation:shape-reveal .6s ease-out; }
+@keyframes shape-wiggle { 25% { transform:rotate(-7deg) scale(1.04); } 50% { transform:rotate(6deg) scale(1.06); } 75% { transform:rotate(-3deg); } }
+.shape-wiggle { animation:shape-wiggle .5s ease-in-out; }
+@keyframes shape-bob { 50% { transform:translateY(-6px); } }
+.shape-bob { animation:shape-bob 2.4s ease-in-out infinite; }
 /* Game pages fill the screen between the header and the bottom phone menu. */
 .app-content > .game-screen { min-height:calc(100dvh - 4.0625rem - env(safe-area-inset-top,0px) - var(--nav-space)); }
 @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; } }
