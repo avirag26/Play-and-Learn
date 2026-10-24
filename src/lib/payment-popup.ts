@@ -1,6 +1,6 @@
 "use client";
 
-import type { PopupCheckout } from "@/lib/auth-client";
+import type { HostedForm, PopupCheckout } from "@/lib/auth-client";
 
 /** Each gateway's own checkout script: loaded from the gateway so card and UPI details never touch our code. */
 const RAZORPAY_SCRIPT = "https://checkout.razorpay.com/v1/checkout.js";
@@ -68,6 +68,23 @@ async function openCashfree(popup: Extract<PopupCheckout, { provider: "cashfree"
   if (result.redirect) return { outcome: "redirecting" };
   if (result.paymentDetails) return { outcome: "finished" };
   return { outcome: "closed", message: result.error?.message };
+}
+
+/** Leaves for a gateway's hosted page that is opened with a signed form POST (PayU); it posts the browser back to the API. */
+export function submitHostedForm(form: HostedForm): void {
+  const element = document.createElement("form");
+  element.method = "POST";
+  element.action = form.action;
+  element.style.display = "none";
+  for (const [name, value] of Object.entries(form.fields)) {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = name;
+    input.value = value;
+    element.appendChild(input);
+  }
+  document.body.appendChild(element);
+  element.submit();
 }
 
 /** Opens the gateway's payment popup over our page and reports how it ended. */

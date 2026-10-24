@@ -53,7 +53,7 @@ const sections: readonly PolicySection[] = [
   { id: "share", title: "Who we share it with", body: <>
     <p>We share information only with the services that run Play &amp; Learn, and only what each one needs:</p>
     <ul>
-      <li><strong>Payment partner</strong> (Razorpay): to take your payment. It receives your name, email and the amount.</li>
+      <li><strong>Payment partner</strong> (PayU): to take your payment. It receives your name, email and the amount.</li>
       <li><strong>Google</strong>: only if you choose to sign in with Google.</li>
       <li><strong>Email delivery</strong>: to send sign-up codes to your email address.</li>
       <li><strong>Hosting and database providers</strong>: to store your account securely.</li>

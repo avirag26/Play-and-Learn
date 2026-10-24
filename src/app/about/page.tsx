@@ -39,7 +39,7 @@ const sections: readonly PolicySection[] = [
   { id: "pricing", title: "Pricing", body: <>
     <PlanPricing />
     <p>Premium is a one-time payment that unlocks the Premium games for the period shown. It does <strong>not renew automatically</strong>, so there is nothing to cancel. Buying again adds the time on top of what is left.</p>
-    <p>To buy, open the <Link href="/grown-ups">Parent area</Link>, create a free parent account and choose <strong>Get Premium</strong>. Payment is handled securely by our payment partner (Razorpay) by UPI, card, net banking or wallet.</p>
+    <p>To buy, open the <Link href="/grown-ups">Parent area</Link>, create a free parent account and choose <strong>Get Premium</strong>. Payment is handled securely by our payment partner (PayU) by UPI, card, net banking or wallet.</p>
     <p>See our <Link href="/refund-policy">Cancellation &amp; Refund Policy</Link> and <Link href="/terms">Terms &amp; Conditions</Link>.</p>
   </> },
   { id: "contact", title: "Questions?", body: <p>We&apos;re happy to help. See our <Link href="/contact">contact details</Link>.</p> },

@@ -123,8 +123,10 @@ export async function getPlan(): Promise<PublicPlan> {
 /** The payment gateway's checkout popup, opened on our own page. */
 type PopupExtras = { name: string; description: string; prefill: { name: string; email: string } };
 export type PopupCheckout = PopupExtras & ({ provider: "razorpay"; keyId: string; orderId: string; amount: number; currency: string } | { provider: "cashfree"; mode: "sandbox" | "production"; paymentSessionId: string; orderId: string });
-/** Either a gateway page to send the browser to, or a popup to open here. */
-export type CheckoutStart = { url: string } | { paymentId: string; popup: PopupCheckout };
+/** A gateway page that must be opened by posting these signed fields to it (PayU). */
+export type HostedForm = { action: string; fields: Record<string, string> };
+/** A gateway page to send the browser to, a form to post to the gateway, or a popup to open here. */
+export type CheckoutStart = { url: string } | { form: HostedForm } | { paymentId: string; popup: PopupCheckout };
 
 export async function startCheckout(phone?: string): Promise<CheckoutStart> {
   return call<CheckoutStart>("/billing/checkout", { method: "POST", body: JSON.stringify(phone ? { phone } : {}) });

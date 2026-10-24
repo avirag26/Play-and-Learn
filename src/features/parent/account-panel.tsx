@@ -9,7 +9,7 @@ import { isPremiumUser, PremiumChip, UserAvatar } from "@/components/ui/user-ava
 import { AuthError, confirmCheckout, deleteAccount, durationText, formatPrice, googleSignInUrl, login, logout, register, resendSignUpCode, startCheckout, verifySignUp, type AuthProviders, type AuthUser, type CodeSent, type PublicPlan } from "@/lib/auth-client";
 import { games } from "@/lib/games";
 import { hasAcceptedPrivacy, rememberPrivacyAccepted } from "@/lib/privacy";
-import { openPaymentPopup } from "@/lib/payment-popup";
+import { openPaymentPopup, submitHostedForm } from "@/lib/payment-popup";
 
 export type AccountState = { status: "loading" } | { status: "signed-out" } | { status: "signed-in"; user: AuthUser } | { status: "error"; message: string };
 export type AccountNotice = { tone: "success" | "error"; message: string };
@@ -42,6 +42,7 @@ function PremiumCard({ user, plan }: { user: AuthUser; plan: PublicPlan | null }
       const checkout = await startCheckout(plan?.requiresPhone ? phone : undefined);
       try { window.sessionStorage.setItem(PARENT_RETURN_KEY, "account"); } catch { /* The adult check will simply be asked again. */ }
       if ("url" in checkout) { window.location.assign(checkout.url); return; }
+      if ("form" in checkout) { submitHostedForm(checkout.form); return; }
       // Popup gateways: pay right here, then go straight to our own success page.
       const result = await openPaymentPopup(checkout.popup, setError);
       if (result.outcome === "redirecting") return;

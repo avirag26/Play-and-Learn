@@ -25,7 +25,7 @@ const sections: readonly PolicySection[] = [
   { id: "premium", title: "Premium and payments", body: <ul>
     <li>Some games are free. Premium unlocks the Premium games for a fixed period. The current price is <strong><PlanPriceText /></strong>. The price and period are always shown before you pay.</li>
     <li>Prices are in Indian Rupees (INR). Any applicable taxes are shown at checkout.</li>
-    <li>Payments are processed by our payment partner (Razorpay). Your card, UPI and bank details are entered on its secure page and we never see them. Its own terms also apply to the payment.</li>
+    <li>Payments are processed by our payment partner (PayU). Your card, UPI and bank details are entered on its secure page and we never see them. Its own terms also apply to the payment.</li>
     <li>Premium is a <strong>one-time payment and does not renew automatically</strong>. Buying again adds the time on top of any time left.</li>
     <li>Premium is linked to your parent account and can be used on any device where you sign in. It cannot be transferred or resold.</li>
     <li>We may change the price in future. A change never affects time you have already paid for.</li>
