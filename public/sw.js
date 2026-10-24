@@ -1,9 +1,9 @@
-const VERSION = "v7";
+const VERSION = "v8";
 const SHELL_CACHE = `play-learn-shell-${VERSION}`;
 const STATIC_CACHE = `play-learn-static-${VERSION}`;
 const RUNTIME_CACHE = `play-learn-runtime-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
-const PRECACHE_URLS = ["/", "/manifest.webmanifest", "/icon-192.svg", "/icon-512.svg", "/apple-touch-icon.svg", OFFLINE_URL];
+const PRECACHE_URLS = ["/", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/apple-touch-icon.png", "/logo-mark.png", OFFLINE_URL];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(SHELL_CACHE).then((cache) => cache.addAll(PRECACHE_URLS)).then(() => self.skipWaiting()));
@@ -47,7 +47,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(navigationFirst(request));
     return;
   }
-  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icon-") || url.pathname === "/apple-touch-icon.svg" || url.pathname === "/manifest.webmanifest") {
+  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icon-") || url.pathname === "/apple-touch-icon.png" || url.pathname === "/logo-mark.png" || url.pathname === "/favicon.ico" || url.pathname === "/manifest.webmanifest") {
     event.respondWith(cacheFirst(request));
   }
 });

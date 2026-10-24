@@ -8,7 +8,8 @@ export const metadata: Metadata = {
   description: "Little learning adventures for curious little minds.",
   applicationName: "Play & Learn",
   manifest: "/manifest.webmanifest",
-  icons: { icon: [{ url: "/icon-192.svg", type: "image/svg+xml" }, { url: "/icon-512.svg", type: "image/svg+xml" }], apple: "/apple-touch-icon.svg" },
+  // Next adds src/app/favicon.ico (16, 32, 48px) itself. Every icon is made from public/logo.png.
+  icons: { icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }, { url: "/icon-512.png", sizes: "512x512", type: "image/png" }], apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }] },
 };
 
 export const viewport: Viewport = { themeColor: "#E5F4FF", width: "device-width", initialScale: 1, viewportFit: "cover" };
