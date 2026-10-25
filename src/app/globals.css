@@ -61,6 +61,14 @@ button, a { -webkit-tap-highlight-color:transparent; }
 .shape-wiggle { animation:shape-wiggle .5s ease-in-out; }
 @keyframes shape-bob { 50% { transform:translateY(-6px); } }
 .shape-bob { animation:shape-bob 2.4s ease-in-out infinite; }
+/* Memory Match: a card turns over in 3D; with reduced motion it simply swaps faces. */
+.memory-card { perspective:900px; touch-action:manipulation; -webkit-touch-callout:none; user-select:none; }
+.memory-card-inner { position:relative; display:block; width:100%; height:100%; transform-style:preserve-3d; transition:transform .45s cubic-bezier(.3,.7,.3,1.1); }
+.memory-card[data-face-up="true"] .memory-card-inner { transform:rotateY(180deg); }
+.memory-card-side { position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; border-radius:inherit; }
+.memory-card-front { transform:rotateY(180deg); }
+@keyframes memory-found { 0%, 100% { transform:none; } 40% { transform:scale(1.08) rotate(-2deg); } 70% { transform:scale(.98) rotate(1deg); } }
+.memory-found { animation:memory-found .6s ease-out .25s; }
 /* Game pages fill the screen between the header and the bottom phone menu. */
 .app-content > .game-screen { min-height:calc(100dvh - 4.0625rem - env(safe-area-inset-top,0px) - var(--nav-space)); }
 @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; } }

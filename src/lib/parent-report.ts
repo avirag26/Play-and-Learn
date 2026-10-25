@@ -10,6 +10,9 @@ import { pictures } from "@/lib/coloring-pictures";
 import { adventureChallenges, countingMissions, numbers } from "@/lib/count-data";
 import { emptyCountProgress, type CountMode, type CountProgress } from "@/lib/count-progress";
 import { games } from "@/lib/games";
+import { memoryPictures } from "@/lib/memory-data";
+import { memoryLevelConfig, memoryLevels } from "@/lib/memory-game";
+import { emptyMemoryProgress, type MemoryProgress } from "@/lib/memory-progress";
 import { getShape, meetShapeIds } from "@/lib/shape-data";
 import { emptyShapeProgress, type ShapeLevel, type ShapeProgress } from "@/lib/shape-progress";
 
@@ -37,6 +40,8 @@ export type GameReport = {
   stillToMeet: { label: string; items: string[] };
   nextStep: string;
   lastPlayed: number | null;
+  /** Shown instead of the quiz score by games that have no quiz questions. */
+  summary?: { label: string; text: string };
 };
 
 export type ParentReport = {
@@ -53,7 +58,7 @@ export type ParentReport = {
   lastPlayed: number | null;
 };
 
-export type ReportInput = { alphabet: AlphabetProgress; animal: AnimalProgress; color: ColorProgress; count?: CountProgress; shape?: ShapeProgress; lastPlayed: LastPlayed };
+export type ReportInput = { alphabet: AlphabetProgress; animal: AnimalProgress; color: ColorProgress; count?: CountProgress; shape?: ShapeProgress; memory?: MemoryProgress; lastPlayed: LastPlayed };
 
 const alphabetModes: readonly { id: AlphabetMode; label: string }[] = [{ id: "discover", label: "Discover the Letters" }, { id: "find", label: "Find the Letter" }, { id: "match", label: "Match the Letter" }];
 const animalModes: readonly { id: AnimalMode; label: string }[] = [{ id: "meet", label: "Meet the Animals" }, { id: "sound", label: "Guess That Sound" }, { id: "find", label: "Find the Animal" }];
@@ -168,8 +173,23 @@ export function shapeReport(progress: ShapeProgress, lastPlayed: LastPlayed = {}
   }, lastPlayed);
 }
 
+export function memoryReport(progress: MemoryProgress, lastPlayed: LastPlayed = {}): GameReport {
+  const activities = activityReports(memoryLevels.map((level) => ({ id: level, label: memoryLevelConfig[level].title })), progress.completed, progress.started);
+  const left = memoryPictures.filter((picture) => !progress.found.includes(picture.id)).map((picture) => picture.name);
+  const summary = { label: "Games played", text: progress.games ? `${progress.games} finished, with ${progress.pairs} pairs found in ${progress.attempts} tries` : "No games finished yet" };
+  return { ...buildGame("memory-match", {
+    activities,
+    milestones: [activitiesMilestone(activities), { label: "Pictures matched", done: memoryPictures.length - left.length, total: memoryPictures.length, hint: `Play Memory Master to find the ${left.length} pictures left.` }],
+    // Turning over two different cards is part of playing, not a wrong answer, so it stays out of the quiz score.
+    attempted: 0, correct: 0,
+    stillToMeet: { label: "Pictures still to match", items: left },
+    practice: "",
+    anyActivity: progress.started.length > 0 || progress.games > 0,
+  }, lastPlayed), summary };
+}
+
 export function buildParentReport(input: ReportInput): ParentReport {
-  const reports = [alphabetReport(input.alphabet, input.lastPlayed), animalReport(input.animal, input.lastPlayed), colorReport(input.color, input.lastPlayed), countReport(input.count ?? emptyCountProgress, input.lastPlayed), shapeReport(input.shape ?? emptyShapeProgress, input.lastPlayed)];
+  const reports = [alphabetReport(input.alphabet, input.lastPlayed), animalReport(input.animal, input.lastPlayed), colorReport(input.color, input.lastPlayed), countReport(input.count ?? emptyCountProgress, input.lastPlayed), shapeReport(input.shape ?? emptyShapeProgress, input.lastPlayed), memoryReport(input.memory ?? emptyMemoryProgress, input.lastPlayed)];
   const sum = (pick: (report: GameReport) => number) => reports.reduce((total, report) => total + pick(report), 0);
   const attempted = sum((report) => report.attempted);
   const correct = sum((report) => report.correct);

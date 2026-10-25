@@ -75,6 +75,11 @@ export function allLines() {
     for (const prompt of matchPrompts) lines.push(prompt(shape.name));
   }
   for (const object of safariObjects) lines.push(safariPrompt(object.id), `The ${object.name} is a ${shapes.find((shape) => shape.id === object.shape).name}!`, object.hint);
+
+  // Memory Match
+  const { memoryPictures, memoryLines, matchCheers, pictureSpeech, matchSpeech } = load("src/lib/memory-data.ts");
+  lines.push(...Object.values(memoryLines), ...matchCheers);
+  for (const picture of memoryPictures) lines.push(pictureSpeech(picture.id), matchSpeech(picture.id));
   return lines;
 }
 

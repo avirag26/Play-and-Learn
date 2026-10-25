@@ -78,7 +78,8 @@ test("every sentence the games say is recorded in both voices", () => {
   const { shapes, safariObjects, meetSpeech } = load("src/lib/shape-data.ts");
   const { countQuestions } = load("src/lib/count-questions.ts");
   const { findQuestions } = load("src/lib/animal-questions.ts");
-  const samples = [voicePreview, ...cheerPhrases.map(speakableText), ...retryPhrases.map(speakableText), meetSpeech("triangle"), ...shapes.map((shape) => matchPrompts[1](shape.name)), ...safariObjects.map((object) => safariPrompt(object.id)), wrongShapeHint("square", shapes[2].hint), ...countQuestions.map((question) => question.prompt), ...findQuestions.map((question) => question.prompt), "A. Apple.", "Can you find the letter Q?"];
+  const { memoryPictures, memoryLines, matchCheers, pictureSpeech, matchSpeech } = load("src/lib/memory-data.ts");
+  const samples = [voicePreview, ...cheerPhrases.map(speakableText), ...retryPhrases.map(speakableText), meetSpeech("triangle"), ...shapes.map((shape) => matchPrompts[1](shape.name)), ...safariObjects.map((object) => safariPrompt(object.id)), wrongShapeHint("square", shapes[2].hint), ...countQuestions.map((question) => question.prompt), ...findQuestions.map((question) => question.prompt), "A. Apple.", "Can you find the letter Q?", ...Object.values(memoryLines), `${memoryLines.done} Hooray! You earned a star!`, ...memoryPictures.flatMap((picture) => [`${pictureSpeech(picture.id)} ${memoryLines.findOther}`, `${pictureSpeech(picture.id)} ${memoryLines.miss}`, ...matchCheers.map((cheer) => `${cheer} ${matchSpeech(picture.id)}`)])];
   for (const line of samples) assert.ok(clipUrls(line, "female", listed), `recorded: "${line}"`);
 });
 
