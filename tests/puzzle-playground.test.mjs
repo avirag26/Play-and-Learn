@@ -53,7 +53,8 @@ test("every puzzle is well formed, and each level has the planned number of piec
     assert.ok(puzzle.intro && puzzle.done && puzzle.name);
   }
   // Every picture is drawn in a box whose shape matches its grid, so pieces are never stretched.
-  const art = fs.readFileSync(path.join(root, "src/features/puzzle-playground/puzzle-art.tsx"), "utf8");
+  // Line endings differ by platform (git may check files out with CRLF on Windows).
+  const art = fs.readFileSync(path.join(root, "src/features/puzzle-playground/puzzle-art.tsx"), "utf8").replace(/\r\n/g, "\n");
   const frames = { apple: [200, 200], butterfly: [300, 200], fish: [300, 200], house: [300, 300], garden: [300, 300] };
   for (const puzzle of puzzles) {
     if (puzzle.art in frames) {
