@@ -80,6 +80,11 @@ export function allLines() {
   const { memoryPictures, memoryLines, matchCheers, pictureSpeech, matchSpeech } = load("src/lib/memory-data.ts");
   lines.push(...Object.values(memoryLines), ...matchCheers);
   for (const picture of memoryPictures) lines.push(pictureSpeech(picture.id), matchSpeech(picture.id));
+
+  // Puzzle Playground
+  const { puzzles, puzzleLines, fitCheers } = load("src/lib/puzzle-data.ts");
+  lines.push(...Object.values(puzzleLines), ...fitCheers);
+  for (const puzzle of puzzles) lines.push(puzzle.intro, puzzle.done);
   return lines;
 }
 

@@ -69,6 +69,13 @@ button, a { -webkit-tap-highlight-color:transparent; }
 .memory-card-front { transform:rotateY(180deg); }
 @keyframes memory-found { 0%, 100% { transform:none; } 40% { transform:scale(1.08) rotate(-2deg); } 70% { transform:scale(.98) rotate(1deg); } }
 .memory-found { animation:memory-found .6s ease-out .25s; }
+/* Puzzle Playground: a piece pops into place, a spot that isn't right gives a gentle wiggle, a hint glows. */
+@keyframes puzzle-snap { 0% { transform:scale(1.18); } 60% { transform:scale(.96); } 100% { transform:none; } }
+.puzzle-snap { animation:puzzle-snap .35s ease-out; }
+@keyframes puzzle-wiggle { 25% { transform:translateX(-5px); } 50% { transform:translateX(5px); } 75% { transform:translateX(-3px); } }
+.puzzle-wiggle { animation:puzzle-wiggle .4s ease-in-out; }
+@keyframes puzzle-glow { 50% { box-shadow:0 0 0 6px rgba(255,217,104,.9); } }
+.puzzle-glow { animation:puzzle-glow 1s ease-in-out 3; }
 /* Game pages fill the screen between the header and the bottom phone menu. */
 .app-content > .game-screen { min-height:calc(100dvh - 4.0625rem - env(safe-area-inset-top,0px) - var(--nav-space)); }
 @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; } }

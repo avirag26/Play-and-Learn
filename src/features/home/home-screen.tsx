@@ -40,12 +40,12 @@ export function HomeScreen() {
             <Link href="/games" className={`inline-flex min-h-11 items-center rounded-full px-3 text-sm font-black text-ink underline underline-offset-4 ${focusRing}`}>See all</Link>
           </div>
           {/* One row for every game, so Home Missions stays above the bottom menu; labels use the full tile width on phones. */}
-          <ul className="mt-1 grid grid-cols-6 gap-1 sm:mt-3 sm:gap-3">{games.map((game) => {
+          <ul className="mt-1 grid grid-cols-7 gap-0.5 sm:mt-3 sm:gap-3">{games.map((game) => {
             const premium = entitlement?.premiumGameIds.includes(game.id) ?? false;
             const locked = isGameLocked(entitlement, game.id, now);
             return <li key={game.id} className="min-w-0"><Link href={game.href} aria-label={`${game.title}${locked ? " (Premium, locked)" : ""}`} className={`flex h-full flex-col items-center gap-1 rounded-2xl px-0 py-1 text-center transition-transform hover:-translate-y-1 sm:gap-2 sm:p-3 ${focusRing}`}>
               <span aria-hidden="true" className={`relative grid aspect-square w-full max-w-20 place-items-center rounded-2xl text-[clamp(1.4rem,7vw,2.75rem)] leading-none shadow-[0_3px_0_rgba(42,91,145,0.15)] ${game.tint}`}>{game.emoji}{premium ? <span className="absolute -bottom-1 -right-1 grid size-6 place-items-center rounded-full border-2 border-white bg-white p-0.5 shadow-[0_2px_0_rgba(42,91,145,0.25)]"><Padlock locked={locked} className="size-full" /></span> : null}</span>
-              <span className="w-full text-[clamp(0.55rem,2.6vw,1rem)] font-black leading-tight text-ink">{game.short}</span>
+              <span className="w-full text-[clamp(0.5rem,2.4vw,1rem)] font-black leading-tight text-ink">{game.short}</span>
             </Link></li>;
           })}</ul>
         </section>

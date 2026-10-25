@@ -13,6 +13,8 @@ import { games } from "@/lib/games";
 import { memoryPictures } from "@/lib/memory-data";
 import { memoryLevelConfig, memoryLevels } from "@/lib/memory-game";
 import { emptyMemoryProgress, type MemoryProgress } from "@/lib/memory-progress";
+import { puzzleLevelConfig, puzzleLevels, puzzles } from "@/lib/puzzle-data";
+import { emptyPuzzleProgress, type PuzzleProgress } from "@/lib/puzzle-progress";
 import { getShape, meetShapeIds } from "@/lib/shape-data";
 import { emptyShapeProgress, type ShapeLevel, type ShapeProgress } from "@/lib/shape-progress";
 
@@ -58,7 +60,7 @@ export type ParentReport = {
   lastPlayed: number | null;
 };
 
-export type ReportInput = { alphabet: AlphabetProgress; animal: AnimalProgress; color: ColorProgress; count?: CountProgress; shape?: ShapeProgress; memory?: MemoryProgress; lastPlayed: LastPlayed };
+export type ReportInput = { alphabet: AlphabetProgress; animal: AnimalProgress; color: ColorProgress; count?: CountProgress; shape?: ShapeProgress; memory?: MemoryProgress; puzzle?: PuzzleProgress; lastPlayed: LastPlayed };
 
 const alphabetModes: readonly { id: AlphabetMode; label: string }[] = [{ id: "discover", label: "Discover the Letters" }, { id: "find", label: "Find the Letter" }, { id: "match", label: "Match the Letter" }];
 const animalModes: readonly { id: AnimalMode; label: string }[] = [{ id: "meet", label: "Meet the Animals" }, { id: "sound", label: "Guess That Sound" }, { id: "find", label: "Find the Animal" }];
@@ -188,8 +190,23 @@ export function memoryReport(progress: MemoryProgress, lastPlayed: LastPlayed = 
   }, lastPlayed), summary };
 }
 
+export function puzzleReport(progress: PuzzleProgress, lastPlayed: LastPlayed = {}): GameReport {
+  const activities = activityReports(puzzleLevels.map((level) => ({ id: level, label: puzzleLevelConfig[level].title })), progress.completed, progress.started);
+  const left = puzzles.filter((puzzle) => !progress.solved.includes(puzzle.id)).map((puzzle) => puzzle.name);
+  const summary = { label: "Puzzles played", text: progress.games ? `${progress.games} finished, with ${progress.hints} hints used` : "No puzzles finished yet" };
+  return { ...buildGame("puzzle-playground", {
+    activities,
+    milestones: [activitiesMilestone(activities), { label: "Pictures built", done: puzzles.length - left.length, total: puzzles.length, hint: `Build the ${left.length} pictures left together.` }],
+    // A piece tried in the wrong spot is part of solving, not a wrong answer, so it stays out of the quiz score.
+    attempted: 0, correct: 0,
+    stillToMeet: { label: "Pictures still to build", items: left },
+    practice: "",
+    anyActivity: progress.started.length > 0 || progress.games > 0,
+  }, lastPlayed), summary };
+}
+
 export function buildParentReport(input: ReportInput): ParentReport {
-  const reports = [alphabetReport(input.alphabet, input.lastPlayed), animalReport(input.animal, input.lastPlayed), colorReport(input.color, input.lastPlayed), countReport(input.count ?? emptyCountProgress, input.lastPlayed), shapeReport(input.shape ?? emptyShapeProgress, input.lastPlayed), memoryReport(input.memory ?? emptyMemoryProgress, input.lastPlayed)];
+  const reports = [alphabetReport(input.alphabet, input.lastPlayed), animalReport(input.animal, input.lastPlayed), colorReport(input.color, input.lastPlayed), countReport(input.count ?? emptyCountProgress, input.lastPlayed), shapeReport(input.shape ?? emptyShapeProgress, input.lastPlayed), memoryReport(input.memory ?? emptyMemoryProgress, input.lastPlayed), puzzleReport(input.puzzle ?? emptyPuzzleProgress, input.lastPlayed)];
   const sum = (pick: (report: GameReport) => number) => reports.reduce((total, report) => total + pick(report), 0);
   const attempted = sum((report) => report.attempted);
   const correct = sum((report) => report.correct);

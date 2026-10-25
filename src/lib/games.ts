@@ -22,4 +22,5 @@ export const games: readonly GameListing[] = [
   { id: "count-the-stars", title: "Count the Stars", short: "Numbers", description: "Numbers 1 to 10", href: "/count-the-stars", emoji: "⭐", tint: "bg-sky", modes: [{ emoji: "🔢", label: "Meet" }, { emoji: "👆", label: "Count" }, { emoji: "🧩", label: "Match" }, { emoji: "🚀", label: "Adventure" }] },
   { id: "shape-safari", title: "Shape Safari", short: "Shapes", description: "Circles, squares and more", href: "/shape-safari", emoji: "🔺", tint: "bg-mint", modes: [{ emoji: "👋", label: "Meet" }, { emoji: "🧩", label: "Match" }, { emoji: "🧭", label: "Safari" }] },
   { id: "memory-match", title: "Memory Match", short: "Memory", description: "Look, remember, match!", href: "/memory-match", emoji: "🃏", tint: "bg-lavender/60", modes: [{ emoji: "🐣", label: "Little" }, { emoji: "🔍", label: "Curious" }, { emoji: "🏆", label: "Master" }] },
+  { id: "puzzle-playground", title: "Puzzle Playground", short: "Puzzles", description: "Think, fit, discover!", href: "/puzzle-playground", emoji: "🧩", tint: "bg-mint", modes: [{ emoji: "🧱", label: "Builder" }, { emoji: "🦋", label: "Explorer" }, { emoji: "🏡", label: "Master" }] },
 ];
