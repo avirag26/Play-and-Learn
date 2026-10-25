@@ -120,5 +120,7 @@ button, a { -webkit-tap-highlight-color:transparent; }
 .mission-dialog { max-width:32rem; padding:0; }
 @keyframes mission-bob { 50% { transform:translateY(-6px) rotate(-3deg); } }
 .mission-bob { animation:mission-bob 3s ease-in-out infinite; }
+/* The mission journey: a winding road across a starry night sky. */
+.mission-map { background:radial-gradient(circle at 20% 15%, rgba(255,255,255,.9) 0 1.5px, transparent 2px) 0 0/90px 110px, radial-gradient(circle at 70% 60%, rgba(255,255,255,.7) 0 1px, transparent 1.5px) 0 0/70px 90px, linear-gradient(180deg, #2f3f8f, #22306f); }
 @keyframes mission-stamp { from { opacity:0; transform:scale(2) rotate(-25deg); } }
 .mission-stamp { animation:mission-stamp .4s cubic-bezier(.2,.9,.3,1.3) both; }

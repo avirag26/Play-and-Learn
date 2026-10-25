@@ -42,7 +42,7 @@ function MissionTimer({ minutes }: { minutes: number }) {
 }
 
 /** The mission, step by step: read aloud, tick steps, optional timer, then a celebration. */
-export function MissionPlayer({ mission, completed, earnedBadge, onComplete, onUndo, onClose, onNext }: { mission: HomeMission | null; completed: boolean; earnedBadge: string | null; onComplete: (id: string) => void; onUndo: (id: string) => void; onClose: () => void; onNext: () => void }) {
+export function MissionPlayer({ mission, completed, earnedBadge, onComplete, onUndo, onClose, onNext }: { mission: HomeMission | null; completed: boolean; earnedBadge: string | null; onComplete: (id: string) => void; onUndo: (id: string) => void; onClose: () => void; /** Shown only when another mission is open today. */ onNext?: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const confetti = useRef<ConfettiHandle>(null);
   const id = useId();
@@ -90,9 +90,10 @@ export function MissionPlayer({ mission, completed, earnedBadge, onComplete, onU
       <p role="status" className="mt-3 text-3xl font-black text-ink">{cheer.replace(/\s*\S+$/u, "")}</p>
       <p className="mt-2 font-bold text-muted-ink">Mission complete! You earned a star.</p>
       {earnedBadge ? <p className="game-pop mx-auto mt-5 inline-flex items-center gap-2 rounded-full bg-sunshine px-4 py-2 font-black text-ink shadow-[0_4px_0_#d99052]"><span aria-hidden="true">🏅</span>New badge: {earnedBadge}!</p> : null}
-      <div className="mt-7 grid gap-3 sm:grid-cols-2">
-        <Button type="button" onClick={onNext}>Next mission →</Button>
-        <Button type="button" variant="secondary" onClick={onClose}>All missions</Button>
+      {onNext ? null : <p className="mt-4 rounded-2xl bg-[#2b356f] px-4 py-3 text-sm font-black text-white"><span aria-hidden="true">🌙 </span>Your next mission opens tomorrow. See you then!</p>}
+      <div className={`mt-7 grid gap-3 ${onNext ? "sm:grid-cols-2" : ""}`}>
+        {onNext ? <Button type="button" onClick={onNext}>Next mission →</Button> : null}
+        <Button type="button" variant={onNext ? "secondary" : "primary"} onClick={onClose}>Back to the map</Button>
       </div>
     </div> : <div className="grid gap-5 px-5 py-6 sm:px-7">
       <button type="button" onClick={listen} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-white px-5 font-black text-ink shadow-[0_3px_0_rgba(42,91,145,0.18)] hover:bg-sky focus-visible:outline-3 focus-visible:outline-ink"><span aria-hidden="true">🔊</span>Listen to the mission</button>

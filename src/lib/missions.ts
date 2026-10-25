@@ -48,13 +48,3 @@ export const homeMissions: HomeMission[] = [
   { id: "water-break", category: "Healthy daily habits", title: "Water Pause", emoji: "🥤", instruction: "Take a calm drink of water with a grown-up, then stretch your arms.", steps: ["Sit down with your own cup.", "Take slow sips of water.", "Stretch your arms up high!"], objective: "Notice body needs and practice a gentle reset.", duration: "2 minutes", minutes: 2, safety: "Use your own cup and sit down while drinking." },
   { id: "teeth-count", category: "Healthy daily habits", title: "Sparkly Teeth", emoji: "🪥", instruction: "Brush your teeth while a grown-up counts slowly to twenty.", steps: ["Put a tiny bit of toothpaste on your brush.", "Brush the top teeth and bottom teeth.", "Keep brushing while your grown-up counts to twenty."], objective: "Build a brushing routine and hear counting in order.", duration: "2 minutes", minutes: 2, safety: "A grown-up helps with toothpaste and checks the brushing." },
 ];
-
-/** A different suggested mission each day, skipping finished ones when possible. */
-export function missionOfTheDay(completed: readonly string[], now: number): HomeMission {
-  const day = Math.floor(now / 86_400_000);
-  for (let offset = 0; offset < homeMissions.length; offset++) {
-    const mission = homeMissions[(day + offset) % homeMissions.length];
-    if (!completed.includes(mission.id)) return mission;
-  }
-  return homeMissions[day % homeMissions.length];
-}
