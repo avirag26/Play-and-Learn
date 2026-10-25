@@ -8,7 +8,7 @@ import { getCurrentUser, getPlan } from "@/lib/auth-client";
  * Cached on the device so games still open (or stay locked) offline. This is a friendly lock for
  * children: the games themselves ship with the app, so it is not copy protection.
  */
-export type Entitlement = { premiumGameIds: string[]; premiumUntil: string | null };
+export type Entitlement = { premiumGameIds: string[]; premiumUntil: string | null; /** Home Missions after `freeMissionDays` need Premium. */ missionsPremium: boolean; freeMissionDays: number };
 
 export const PREMIUM_CACHE_KEY = "play-learn-premium-v1";
 
@@ -17,7 +17,7 @@ function readCache(): Entitlement | null {
     const value: unknown = JSON.parse(window.localStorage.getItem(PREMIUM_CACHE_KEY) ?? "null");
     if (!value || typeof value !== "object") return null;
     const item = value as Partial<Entitlement>;
-    return { premiumGameIds: Array.isArray(item.premiumGameIds) ? item.premiumGameIds.filter((id): id is string => typeof id === "string") : [], premiumUntil: typeof item.premiumUntil === "string" ? item.premiumUntil : null };
+    return { premiumGameIds: Array.isArray(item.premiumGameIds) ? item.premiumGameIds.filter((id): id is string => typeof id === "string") : [], premiumUntil: typeof item.premiumUntil === "string" ? item.premiumUntil : null, missionsPremium: item.missionsPremium === true, freeMissionDays: freeDays(item.freeMissionDays) };
   } catch { return null; }
 }
 
@@ -25,9 +25,22 @@ function writeCache(entitlement: Entitlement): void {
   try { window.localStorage.setItem(PREMIUM_CACHE_KEY, JSON.stringify(entitlement)); } catch { /* Storage is optional. */ }
 }
 
+/** Free mission days from the API or the cache: a whole number of days, 3 when unknown. */
+function freeDays(value: unknown): number {
+  return Number.isSafeInteger(value) && (value as number) >= 0 ? value as number : 3;
+}
+
 // `now` is always passed in: reading the clock while rendering breaks prerendering (Cache Components).
 export function hasPremium(entitlement: Entitlement, now: number): boolean {
   return entitlement.premiumUntil !== null && new Date(entitlement.premiumUntil).getTime() > now;
+}
+
+/**
+ * The first Home Missions day that needs Premium, or null when every day is open (missions are free,
+ * or this device's parent has Premium).
+ */
+export function firstPremiumMissionDay(entitlement: Entitlement | null, now: number): number | null {
+  return entitlement && entitlement.missionsPremium && !hasPremium(entitlement, now) ? entitlement.freeMissionDays + 1 : null;
 }
 
 export function isGameLocked(entitlement: Entitlement | null, gameId: string, now: number): boolean {
@@ -52,7 +65,7 @@ const listeners = new Set<(entitlement: Entitlement | null) => void>();
 export function refreshPremium(): Promise<Entitlement | null> {
   pending ??= Promise.all([getPlan(), getCurrentUser()])
     .then(([plan, user]) => {
-      const entitlement: Entitlement = { premiumGameIds: plan.premiumGameIds, premiumUntil: user?.subscription.status === "active" ? user.subscription.currentPeriodEnd : null };
+      const entitlement: Entitlement = { premiumGameIds: plan.premiumGameIds, premiumUntil: user?.subscription.status === "active" ? user.subscription.currentPeriodEnd : null, missionsPremium: plan.missionsPremium === true, freeMissionDays: freeDays(plan.freeMissionDays) };
       writeCache(entitlement);
       return entitlement;
     }, () => readCache())

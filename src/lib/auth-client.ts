@@ -114,7 +114,7 @@ export function googleErrorMessage(code: string): string {
 }
 
 /** The Premium plan, as set in the admin app. `amount` is in paise. */
-export type PublicPlan = { name: string; amount: number; currency: string; durationDays: number; premiumGameIds: string[]; available: boolean; requiresPhone: boolean };
+export type PublicPlan = { name: string; amount: number; currency: string; durationDays: number; premiumGameIds: string[]; /** Home Missions after the free days need Premium (missing from older APIs: treated as free). */ missionsPremium?: boolean; freeMissionDays?: number; available: boolean; requiresPhone: boolean };
 
 export async function getPlan(): Promise<PublicPlan> {
   return call<PublicPlan>("/billing/plan");

@@ -72,3 +72,30 @@ test("days follow the device's calendar, and saved days are checked", () => {
   assert.deepEqual({ ...parseMissionDays({ "color-hunt": 5, "made-up": 3, "count-toys": -1, "shape-build": 2.5 }) }, { "color-hunt": 5 });
   assert.deepEqual({ ...parseMissionDays("junk") }, {});
 });
+
+test("with Premium missions, the free days open as usual and the next day waits for Premium", () => {
+  const ids = journeyMissions.map((mission) => mission.id);
+  // Three free days: day 4 onwards needs Premium.
+  const fresh = journey([], {}, DAY, 4);
+  assert.equal(fresh[0].status, "today");
+  assert.ok(fresh.slice(0, 3).every((step) => !step.premium), "free days carry no Premium mark");
+  assert.ok(fresh.slice(3).every((step) => step.premium), "later days show they need Premium");
+
+  const threeDone = recordFinish(recordFinish(recordFinish({}, ids[0], DAY - 3), ids[1], DAY - 2), ids[2], DAY - 1);
+  const steps = journey(ids.slice(0, 3), threeDone, DAY, 4);
+  assert.deepEqual(statuses(steps).slice(0, 5), ["done", "done", "done", "premium", "locked"]);
+  // Buying Premium (no lock day) opens day 4 straight away; missions already done never lock again.
+  assert.deepEqual(statuses(journey(ids.slice(0, 3), threeDone, DAY, null)).slice(0, 5), ["done", "done", "done", "today", "locked"]);
+  assert.deepEqual(statuses(journey(ids.slice(0, 6), {}, DAY, 1)).slice(0, 7), ["done", "done", "done", "done", "done", "done", "premium"], "finished missions stay finished if Premium lapses");
+  assert.equal(journey([], {}, DAY, 1)[0].status, "premium", "no free days: day 1 needs Premium too");
+});
+
+test("the Premium mission lock follows the plan and the parent's Premium", () => {
+  const { firstPremiumMissionDay } = load("src/lib/premium.ts");
+  const base = { premiumGameIds: [], premiumUntil: null, missionsPremium: true, freeMissionDays: 3 };
+  assert.equal(firstPremiumMissionDay(base, 1000), 4);
+  assert.equal(firstPremiumMissionDay({ ...base, missionsPremium: false }, 1000), null, "missions are free when the admin hasn't locked them");
+  assert.equal(firstPremiumMissionDay({ ...base, premiumUntil: new Date(5000).toISOString() }, 1000), null, "Premium opens every day");
+  assert.equal(firstPremiumMissionDay({ ...base, premiumUntil: new Date(500).toISOString() }, 1000), 4, "an ended Premium locks them again");
+  assert.equal(firstPremiumMissionDay(null, 1000), null, "unknown (first visit offline) stays open");
+});

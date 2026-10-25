@@ -9,6 +9,7 @@ import { MissionPlayer } from "@/features/missions/mission-player";
 import { dayNumber, journey, readMissionDays, recordFinish, saveMissionDays, type JourneyStep, type MissionDays } from "@/lib/mission-journey";
 import { missionCategories, missionCategoryInfo, type MissionCategory, homeMissions } from "@/lib/missions";
 import { readCompletedMissions, saveCompletedMissions } from "@/lib/app-settings";
+import { firstPremiumMissionDay, usePremium } from "@/lib/premium";
 
 const categoryDone = (category: MissionCategory, completed: readonly string[]) => homeMissions.filter((mission) => mission.category === category && completed.includes(mission.id)).length;
 const categoryTotal = (category: MissionCategory) => homeMissions.filter((mission) => mission.category === category).length;
@@ -20,10 +21,11 @@ export default function MissionsPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [earnedBadge, setEarnedBadge] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const { entitlement, now } = usePremium();
   useEffect(() => { const timer = window.setTimeout(() => { setCompleted(readCompletedMissions()); setDays(readMissionDays()); setToday(dayNumber(Date.now())); }, 0); return () => window.clearTimeout(timer); }, []);
 
-  const steps = today ? journey(completed, days, today) : [];
-  const current = steps.find((step) => step.status === "today" || step.status === "tomorrow");
+  const steps = today ? journey(completed, days, today, firstPremiumMissionDay(entitlement, now)) : [];
+  const current = steps.find((step) => step.status === "today" || step.status === "tomorrow" || step.status === "premium");
   const doneCount = homeMissions.filter((mission) => completed.includes(mission.id)).length;
   const active = homeMissions.find((mission) => mission.id === activeId) ?? null;
   // After finishing, "Next mission" only appears when another mission is already open today.
@@ -31,7 +33,7 @@ export default function MissionsPage() {
 
   function open(step: JourneyStep) { setNote(""); setEarnedBadge(null); setActiveId(step.mission.id); }
   function locked(step: JourneyStep) {
-    setNote(step.status === "tomorrow" ? `Day ${step.day} opens tomorrow. See you then! 🌙` : `Day ${step.day} opens after the missions before it. One new mission each day!`);
+    setNote(step.status === "tomorrow" ? `Day ${step.day} opens tomorrow. See you then! 🌙` : step.premium ? `Day ${step.day} is a Premium mission. Ask a grown-up to unlock it! ⭐` : `Day ${step.day} opens after the missions before it. One new mission each day!`);
   }
   function complete(id: string) {
     if (completed.includes(id)) return;
@@ -64,11 +66,15 @@ export default function MissionsPage() {
       </Card>
     </div>
 
-    {today ? <Card className="mt-6 flex items-center gap-4 overflow-hidden bg-gradient-to-br from-sunshine/70 via-[#ffe9b0] to-coral/40 p-4 sm:p-5">
+    {today ? <Card className="mt-6 flex flex-wrap items-center gap-4 overflow-hidden bg-gradient-to-br from-sunshine/70 via-[#ffe9b0] to-coral/40 p-4 sm:p-5">
       {current?.status === "today" ? <>
         <span aria-hidden="true" className="mission-bob grid size-16 shrink-0 place-items-center rounded-3xl border-4 border-white bg-white/70 text-4xl">{current.mission.emoji}</span>
         <div className="min-w-0 flex-1"><p className="text-xs font-black uppercase tracking-[0.18em] text-ink/70">Day {current.day} · Today&apos;s mission</p><h2 className="text-2xl font-black leading-tight text-ink">{current.mission.title}</h2></div>
         <button type="button" onClick={() => open(current)} className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full border-2 border-ink bg-white px-5 font-extrabold text-ink shadow-[0_4px_0_#d99052] transition hover:-translate-y-0.5 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-ink">Let&apos;s go! <span aria-hidden="true">🚀</span></button>
+      </> : current?.status === "premium" ? <>
+        <span aria-hidden="true" className="grid size-16 shrink-0 place-items-center rounded-3xl border-4 border-white bg-sunshine text-4xl">⭐</span>
+        <div className="min-w-[12rem] flex-1"><h2 className="text-2xl font-black leading-tight text-ink">More missions with Premium</h2><p className="text-sm font-bold leading-6 text-ink/75">You finished the free days! Day {current.day} and the rest open with Premium.</p></div>
+        <Link href="/grown-ups" className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-full max-sm:w-full border-2 border-ink bg-white px-5 text-sm font-extrabold text-ink shadow-[0_4px_0_#d99052] transition hover:-translate-y-0.5 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-ink">Grown-ups: unlock</Link>
       </> : current?.status === "tomorrow" ? <>
         <span aria-hidden="true" className="grid size-16 shrink-0 place-items-center rounded-3xl border-4 border-white bg-[#2b356f] text-4xl">🌙</span>
         <div className="min-w-0 flex-1"><h2 className="text-2xl font-black leading-tight text-ink">Great job today!</h2><p className="text-sm font-bold leading-6 text-ink/75">Day {current.day} opens tomorrow. Come back for a new adventure!</p></div>

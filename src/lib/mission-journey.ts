@@ -45,23 +45,28 @@ export type JourneyStep = {
   mission: HomeMission;
   /** 1 for the first mission on the path. */
   day: number;
-  /** done: finished; today: ready to play now; tomorrow: opens tomorrow; locked: further along the path. */
-  status: "done" | "today" | "tomorrow" | "locked";
+  /** done: finished; today: ready to play now; tomorrow: opens tomorrow; premium: next, but needs Premium; locked: further along the path. */
+  status: "done" | "today" | "tomorrow" | "premium" | "locked";
+  /** This day is past the free days and needs Premium (shown on its padlock). */
+  premium: boolean;
 };
 
 /**
  * Where the child is on the path. The next mission is the first one not finished; it is open if it is
- * the very first, or if the mission before it was finished on an earlier day.
+ * the very first, or if the mission before it was finished on an earlier day. With `premiumFrom`, days
+ * from that one on wait for Premium; missions already finished always stay open.
  */
-export function journey(completed: readonly string[], days: MissionDays, today: number): JourneyStep[] {
+export function journey(completed: readonly string[], days: MissionDays, today: number, premiumFrom: number | null = null): JourneyStep[] {
   const nextIndex = journeyMissions.findIndex((mission) => !completed.includes(mission.id));
   return journeyMissions.map((mission, index) => {
+    const premium = premiumFrom !== null && index + 1 >= premiumFrom;
     const step = { mission, day: index + 1 };
-    if (completed.includes(mission.id)) return { ...step, status: "done" };
-    if (index !== nextIndex) return { ...step, status: "locked" };
+    if (completed.includes(mission.id)) return { ...step, status: "done", premium: false };
+    if (index !== nextIndex) return { ...step, status: "locked", premium };
+    if (premium) return { ...step, status: "premium", premium };
     const previous = journeyMissions[index - 1];
     const ready = !previous || (days[previous.id] ?? 0) < today;
-    return { ...step, status: ready ? "today" : "tomorrow" };
+    return { ...step, status: ready ? "today" : "tomorrow", premium };
   });
 }
 
